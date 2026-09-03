@@ -4,18 +4,30 @@ const db = require("../models");
 const moment = require('moment');
 
 const task = cron.schedule('*/10 * * * *', async () => {
-    const now = moment();
-    const appointments = await db.Appointments.findAll({
-        where: {
-            status: 'active',
-            '$schedule.date$': { [Op.lte]: now.format('YYYY-MM-DD') },
-            '$time_slot$': { [Op.lte]: now.format('HH:mm:ss') }
-        },
-        include: [{ model: db.Schedules, as: 'schedule' }]
-    });
+    try {
+        const now = moment();
+        const today = now.format('YYYY-MM-DD');
+        const currentTime = now.format('HH:mm:ss');
 
-    for (const appointment of appointments) {
-        await appointment.update({ status: 'completed' });
+        const appointments = await db.Appointments.findAll({
+            where: {
+                status: 'active',
+                [Op.or]: [
+                    { '$schedule.date$': { [Op.lt]: today } },
+                    {
+                        '$schedule.date$': today,
+                        time_slot: { [Op.lte]: currentTime }
+                    }
+                ]
+            },
+            include: [{ model: db.Schedules, as: 'schedule' }]
+        });
+
+        for (const appointment of appointments) {
+            await appointment.update({ status: 'completed' });
+        }
+    } catch (err) {
+        console.error('Cron task error:', err);
     }
 }, {
     scheduled: false

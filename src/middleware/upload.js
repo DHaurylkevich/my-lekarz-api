@@ -15,9 +15,6 @@ const storageImages = new CloudinaryStorage({
             { quality: "auto", fetch_format: "auto" }
         ],
         resource_type: "image",
-        limits: {
-            fileSize: 5 * 1024 * 1024
-        }
     },
 });
 
@@ -28,9 +25,6 @@ const storageFiles = new CloudinaryStorage({
         folder: "uploads/files",
         allowedFormats: ["pdf", "doc", "docx"],
         resource_type: "raw",
-        limits: {
-            fileSize: 10 * 1024 * 1024
-        }
     },
 });
 
@@ -49,5 +43,11 @@ exports.deleteFromCloud = async (url) => {
     }
 };
 
-exports.uploadImages = multer({ storage: storageImages });
-exports.uploadFiles = multer({ storage: storageFiles });
+exports.uploadImages = multer({
+    storage: storageImages,
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
+exports.uploadFiles = multer({
+    storage: storageFiles,
+    limits: { fileSize: 10 * 1024 * 1024 }
+});

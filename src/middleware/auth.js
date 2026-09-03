@@ -5,11 +5,10 @@ const isAuthenticated = (req, res, next) => {
     res.status(401).json({ message: 'Unauthorized user' });
 };
 
-const hasRole = (role) => {
+const hasRole = (roles) => {
     return (req, res, next) => {
-        if (!Array.isArray(role) && req.user && req.user.role === role) {
-            return next();
-        } else if (req.user && role.includes(req.user.role)) {
+        const allowedRoles = Array.isArray(roles) ? roles : [roles];
+        if (req.user && allowedRoles.includes(req.user.role)) {
             return next();
         }
         res.status(403).json({ message: 'Access denied' });

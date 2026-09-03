@@ -76,7 +76,37 @@ router.post("/api/user/role", (req, res, next) => {
     res.status(201).json("Successful");
 });
 
-router.post("/api/upload/file", upload.single("file"), (req, res) => {
+/**
+ * @swagger
+ * /api/upload/file:
+ *   post:
+ *     summary: Upload a file (pdf, doc, docx) and get back its URL
+ *     tags: [Utils]
+ *     security:
+ *       - CookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 fileUrl:
+ *                   type: string
+ */
+router.post("/api/upload/file", isAuthenticated, upload.single("file"), (req, res) => {
     res.json({ message: "File uploaded successfully", fileUrl: req.file.path });
 });
 

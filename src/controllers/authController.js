@@ -29,9 +29,13 @@ const AuthController = {
 
             req.login(user, (err) => {
                 if (err) {
-                    throw new AppError("Error during login", 500);
+                    return next(new AppError("Error during login", 500));
                 }
-                res.json({ user, message: "Registration successful" });
+
+                const userData = user.toJSON();
+                delete userData.password;
+                delete userData.resetToken;
+                res.json({ user: userData, message: "Registration successful" });
             });
         } catch (err) {
             next(err);
@@ -53,10 +57,9 @@ const AuthController = {
     googleCallback: (req, res, next) => {
         try {
             if (!req.user) {
-                res.redirect("https://mojlekarz.netlify.app/login")
-                // throw new AppError("User is not authorized", 401);
+                return res.redirect("https://mojlekarz.netlify.app/login");
             }
-            res.redirect("https://mojlekarz.netlify.app/")
+            return res.redirect("https://mojlekarz.netlify.app/");
         } catch (err) {
             next(err);
         }

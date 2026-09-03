@@ -5,7 +5,7 @@ const passwordValidation = [
         .exists().withMessage("Old password is required"),
     body("newPassword")
         .exists().withMessage("New password is required")
-        .isLength({ min: 9 }).withMessage("Password must be at least 8 characters")
+        .isLength({ min: 8 }).withMessage("Password must be at least 8 characters")
 ];
 
 const dataExistValidation = [

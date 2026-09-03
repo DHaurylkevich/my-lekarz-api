@@ -182,7 +182,14 @@ const ScheduleService = {
                 ? { date: date }
                 : {
                     date: { [Op.gte]: new Date() },
-                    available_slots: { [Op.not]: [] }
+                    [Op.and]: db.sequelize.literal(`(
+                        SELECT COUNT(*)
+                        FROM "appointments"
+                        WHERE "appointments"."schedule_id" = "Schedules"."id"
+                          AND "appointments"."status" = 'active'
+                    ) < (
+                        EXTRACT(EPOCH FROM ("Schedules"."end_time" - "Schedules"."start_time")) / 60 / "Schedules"."interval"
+                    )`),
                 },
             required: true,
             order: [["date", "ASC"]]

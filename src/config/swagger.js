@@ -12,9 +12,7 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: process.env.NODE_ENV !== "production"
-                    ? "http://localhost:3000/api"
-                    : "https://doc-web-rose.vercel.app/api",
+                url: "http://localhost:5000/api",
                 description: "Development server"
             },
             {
@@ -24,10 +22,15 @@ const swaggerOptions = {
         ],
         components: {
             securitySchemes: {
+                // The API authenticates with express-session/passport. The
+                // session cookie is named "connect.sid". Once you log in via
+                // POST /login (or the Google callback) in the same browser
+                // origin, the cookie is sent automatically - Swagger UI only
+                // needs to be opened on the API host itself.
                 CookieAuth: {
                     type: "apiKey",
                     in: "cookie",
-                    name: "token"
+                    name: "connect.sid"
                 }
             }
         },
@@ -41,6 +44,9 @@ const swaggerDocs = swaggerJsDoc(swaggerOptions);
 
 const swaggerSetupOptions = {
     customCssUrl: 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css',
+    swaggerOptions: {
+        persistAuthorization: true,
+    },
 };
 
 module.exports = (app) => {

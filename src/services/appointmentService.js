@@ -25,7 +25,7 @@ const AppointmentService = {
             status: "active"
         });
     },
-    getAppointmentsByPatientId: async (patientId, limit, page) => {
+    getAppointmentsByPatientId: async (patientId, doctorId, limit, page) => {
         const { parsedLimit, offset } = getPaginationParams(limit, page);
 
         const { rows, count } = await db.Appointments.findAndCountAll({
@@ -41,6 +41,8 @@ const AppointmentService = {
                     model: db.DoctorService,
                     as: 'doctorService',
                     attributes: ["id"],
+                    where: { doctor_id: doctorId },
+                    required: true,
                     include: [
                         {
                             model: db.Doctors,

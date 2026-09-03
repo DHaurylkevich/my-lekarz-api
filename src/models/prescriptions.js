@@ -55,17 +55,26 @@ module.exports = (sequelize, DataTypes) => {
         tableName: 'prescriptions',
         timestamps: true,
         hooks: {
-            afterFind: async (prescriptions) => {
-                if (!prescriptions) return;
-                const now = new Date();
-                const expiredPrescriptions = prescriptions.filter(p => p.expiration_date < now && p.expiration_date !== null);
+            afterFind: async (instances) => {
+                if (!instances) return;
 
-                if (expiredPrescriptions.length > 0) {
-                    await Prescriptions.update(
-                        { status: 'inactive', code: null, expiration_date: null },
-                        { where: { id: expiredPrescriptions.map(p => p.id) } }
-                    );
-                }
+                const list = Array.isArray(instances) ? instances : [instances];
+                const now = new Date();
+                const expired = list.filter(p => p.expiration_date !== null && p.expiration_date < now);
+
+                if (expired.length === 0) return;
+
+                const ids = expired.map(p => p.id);
+                await Prescriptions.update(
+                    { status: 'inactive', code: null, expiration_date: null },
+                    { where: { id: ids } }
+                );
+
+                expired.forEach(p => {
+                    p.status = 'inactive';
+                    p.code = null;
+                    p.expiration_date = null;
+                });
             }
         }
     });

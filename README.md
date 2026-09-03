@@ -50,10 +50,6 @@ The project uses the following technologies and libraries:
   - faker
   - mochawesome
 
-- **Other**:
-  - socket.io
-  - express-socket.io-session
-  - socket.io-client
 
 ## Installation
 
@@ -123,7 +119,6 @@ To run tests, use the command:
     ├─── models/ # Sequelise data models
     ├─── routes/ # API routing
     ├──── services/ # Business logic
-    ├──── socketHandlers # WebSocket handlers
     ├──── utils/ # Auxiliary utilities
     tests/
     ├──── integration/ # Integration tests
