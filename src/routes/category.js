@@ -100,7 +100,6 @@ router.put("/categories/:categoryId", validateBody("name"), validateRequest, isA
 /**
  * @swagger
  * /categories/{categoryId}:
- *   put:
  *   delete:
  *     summary: Delete the category
  *     tags: [Categories]

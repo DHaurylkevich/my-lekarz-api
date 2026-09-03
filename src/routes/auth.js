@@ -11,7 +11,7 @@ const AuthController = require("../controllers/authController");
  *     summary: User authentication
  *     tags: [Auth]
  *     servers:
- *       - url: http://localhost:3000
+ *       - url: http://localhost:5000
  *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
@@ -63,7 +63,7 @@ router.post("/login", (req, res, next) => {
  *     summary: Register a new user
  *     tags: [Auth]
  *     servers:
- *       - url: http://localhost:3000
+ *       - url: http://localhost:5000
  *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
@@ -87,7 +87,7 @@ router.post("/register", AuthController.register);
  *     summary: User logout
  *     tags: [Auth]
  *     servers:
- *       - url: http://localhost:3000
+ *       - url: http://localhost:5000
  *       - url: https://doc-web-rose.vercel.app
  *     responses:
  *       '200':
@@ -109,7 +109,7 @@ router.get("/logout", AuthController.logout);
  *     summary: Start Google authentication
  *     tags: [Auth]
  *     servers:
- *       - url: http://localhost:3000
+ *       - url: http://localhost:5000
  *       - url: https://doc-web-rose.vercel.app
  */
 router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
@@ -120,7 +120,7 @@ router.get("/auth/google", passport.authenticate("google", { scope: ["profile", 
  *     summary: Google authentication callback URL
  *     tags: [Auth]
  *     servers:
- *       - url: http://localhost:3000
+ *       - url: http://localhost:5000
  *       - url: https://doc-web-rose.vercel.app
  */
 router.get("/auth/google/callback",
@@ -156,7 +156,7 @@ router.post("/forgot-password", AuthController.requestPasswordReset);
  *     summary: Sets a new password for the user or clinic
  *     tags: [Auth]
  *     servers:
- *       - url: http://localhost:3000
+ *       - url: http://localhost:5000
  *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true

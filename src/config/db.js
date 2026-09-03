@@ -19,8 +19,6 @@ const config = {
     }
 };
 
-// SSL is only required for hosted databases. Local connections (localhost /
-// 127.0.0.1) usually run without SSL; set DB_SSL=true to force it.
 const isRemoteUrl = url && !/localhost|127\.0\.0\.1/.test(url);
 const useSSL = Boolean(isRemoteUrl) || process.env.DB_SSL === "true";
 
