@@ -1,134 +1,143 @@
 const { Op } = require("sequelize");
 const db = require("../models");
-// const User = db.Users;
-const passwordUtil = require("../utils/passwordUtil");
+const hashingPassword = require("../utils/passwordUtil");
+const bcrypt = require("bcrypt");
+const cloudinary = require("../middleware/upload");
+const AppError = require("../utils/appError");
+const sequelize = require("../config/db");
 
 const UserService = {
-    /**
-     * createUser создает транзакцию создания пользователя в базе даных.
-     * @param {Object} user
-     * @param {Transaction} t
-     * @param {String} user.email
-     * @param {String} user.password
-     * @returns {Object} createdUser
-     * @throws {Error} "User already exist", "Error occurred"
-    */
-    createUser: async (user, t) => {
-        try {
-            const userFound = await db.Users.findOne({ where: { email: user.email } });
-            if (userFound) {
-                throw new Error("User already exist");
+    createUser: async (userData, t) => {
+        const foundUser = await db.Users.findOne({ where: { email: userData.email } });
+        if (foundUser) {
+            throw new AppError("User already exist", 404);
+        }
+
+        userData.password = await hashingPassword(userData.password);
+        return await db.Users.create(userData, { transaction: t });
+    },
+    getUserById: async (userId, role) => {
+        const user = await db.Users.findByPk(userId,
+            {
+                attributes: { exclude: ["password", "createdAt", "updatedAt", "resetToken", "role"] },
+                include: [{
+                    model: db.Addresses,
+                    as: "address",
+                    attributes: { exclude: ["createdAt", "updatedAt", "clinic_id", "user_id"] }
+                }]
+            }
+        );
+
+        if (!user) {
+            throw new AppError("User not found", 404);
+        }
+
+        if (role === "doctor") {
+            const doctor = await user.getDoctor({
+                attributes: ["rating", "hired_at", "description"],
+                include: [
+                    { model: db.Specialties, as: "specialty", attributes: ["id", "name"] },
+                    { model: db.Clinics, as: "clinic", attributes: ["name"] },
+                ]
+            });
+
+            if (!doctor) {
+                return new AppError("Doctor not found", 404);
             }
 
-            user.password = await passwordUtil.hashingPassword(user.password);
-
-            return await db.Users.create(user, { transaction: t });
-        } catch (err) {
-            console.error("Error occurred", err);
-            throw new Error(err.message);
+            return { ...user.dataValues, ...doctor.dataValues };
         }
+        return user;
     },
-    /**
-    * findUsers возвращает массив всех пользователей
-    * @returns {Array}
-    * @throws {Error} "Error occurred"
-    */
-    findUsers: async () => {
-        try {
-            return await db.Users.findAll();
-        } catch (err) {
-            console.error("Error occurred", err);
-            throw new Error(err.message)
-        }
-    },
-    /**
-     * findUSerByParam возвращает объект пользователя
-     * @param {String} param 
-     * @returns {Object} 
-     * @throws {Error} "User not found", "Error occurred"
-     */
     findUserByParam: async (param) => {
-        try {
-            const user = await db.Users.findOne({ where: { [Op.or]: [{ email: param }, { phone: param }, { pesel: param }] } });
-
-            if (!user) {
-                throw new Error("User not found");
+        let user = await db.Users.findOne({
+            where: { [Op.or]: [{ email: param }, { phone: param }, { pesel: param }] },
+            include: {
+                model: db.Doctors,
+                as: "doctor",
+                attributes: ["clinic_id"]
             }
+        });
+
+        if (!user) {
+            user = await db.Clinics.findOne({ where: { [Op.or]: [{ email: param }, { phone: param }] } });
+        }
+
+        return user;
+    },
+    updateUser: async (userId, userData, addressData) => {
+        if ("password" in userData) {
+            delete userData.password;
+        }
+
+        const t = await sequelize.transaction();
+        try {
+            const user = await db.Users.findByPk(userId);
+            await user.update(userData, { transaction: t });
+
+            const address = await user.getAddress();
+            if (address) {
+                await address.update({ ...addressData, user_id: user.id }, { transaction: t });
+            } else {
+                await user.createAddress(addressData, { transaction: t });
+            }
+
+            await t.commit();
+
             return user;
         } catch (err) {
-            console.error("Error occurred", err);
-            throw new Error(err.message)
+            await t.rollback();
+            throw err;
         }
     },
-    /**
-     * ВОЗМОЖНО НАДО ОПРЕДЕЛИТЬ ИМЕННО ЧТО ОБНОВЛЯЕТСЯ
-     * updateUser возвращает обновленный объект пользователя
-     * @param {Number} id 
-     * @param {Object} updatedData 
-     * @returns {Object}
-     * @throws {Error} "User not found", "Error occurred"
-     */
-    updateUser: async (id, updatedData, t) => {
+    updateImage: async (userId, image) => {
         try {
-            const user = await db.Users.findByPk(id);
+            let user = await db.Users.findByPk(userId);
             if (!user) {
-                throw Error("User not found")
+                user = await db.Clinics.findByPk(userId);
+            }
+            if (!user) {
+                throw new AppError("User not found", 404);
+            }
+            if (user.photo !== null && image) {
+                await cloudinary.deleteFromCloud(user.photo);
             }
 
-            return await user.update(updatedData, {transaction: t});
+            await user.update({ photo: image }, { returning: true });
         } catch (err) {
-            console.error("Error occurred", err);
-            throw new Error(err.message)
+            if (image) await cloudinary.deleteFromCloud(image);
+            throw err;
         }
     },
-    /**
-     *  На фронте должна быть проверка одинаковы ли все пароли введенные 
-     * @param {Number} id 
-     * @param {String} oldPassword 
-     * @param {String} newPassword 
-     */
-    updatePassword: async (id, oldPassword, newPassword) => {
-        try{
-            const user = await db.Users.findByPk(id);
-            if (!user) {
-                throw Error("User not found")
-            }
-
-            passwordUtil.checkingPassword(oldPassword, user.password);
-
-            newPassword = passwordUtil.hashingPassword(newPassword);
-
-            return await db.Users.update({ password: newPassword });
-        }catch(err){
-            console.error("Error occurred", err);
-            throw new Error(err.message)
+    updatePassword: async (user, oldPassword, newPassword) => {
+        const userId = user.id;
+        let entity;
+        if (user.role !== "clinic") {
+            entity = await db.Users.findByPk(userId);
+        } else {
+            entity = await db.Clinics.findByPk(userId);
         }
+        if (!entity) {
+            throw new AppError("User not found", 404);
+        }
+
+        const match = await bcrypt.compare(oldPassword, entity.password);
+        if (!match) {
+            throw new AppError("Password Error", 400);
+        };
+
+        newPassword = await hashingPassword(newPassword);
+        return await entity.update({ password: newPassword });
     },
-    /**
-     * deleteUser удаляет существующего пользователя из базы данных
-     * @param {Number} id 
-     * @returns {Object} {message: "Successful delete"}
-     * @throws {Error}  "User not found", "Error occurred"
-     */
-    deleteUser: async (id) => {
-        try {
-            const user = await db.Users.findByPk(id)
-            if (!user) {
-                throw Error("User not found")
-            }
+    deleteUserById: async (userId) => {
+        const user = await db.Users.findByPk(userId);
 
-            await user.destroy();
-            return { message: "Successful delete" }
-        } catch (err) {
-            console.error("Error occurred", err);
-            throw new Error(err.message)
+        if (user.photo !== null) {
+            await cloudinary.deleteFromCloud(user.photo);
         }
+
+        await user.destroy({ force: true });
     }
 }
 
 module.exports = UserService;
-
-// Данные в сервис уже приходят проверенными.
-// Можно создать три вида пользователя: Admin, Patient, Doctor. 
-// Чтобы cоздать доктора, нужно чтобы был корректный существующий center_id
-// Проверки: есть ли email в БД и есть center id в бд

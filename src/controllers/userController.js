@@ -1,77 +1,91 @@
-// const TEST = require("../../tests/unit/controllers/usersController.test.js");
 const UserService = require("../services/userService");
-const authMiddleware = require("../middleware/auth");
-const passwordUtil = require("../utils/passwordUtil");
+const ClinicService = require("../services/clinicService");
+const AppError = require("../utils/appError");
 
 const UserController = {
-    // const User = require("../models/user");
-    // const { validationResult } = require("express-validator");
-    // const jwt = require("jsonwebtoken");
-    // const { validationResult } = require('express-validator');
-    // registerUser: async (req, res, next) => {
-    //     try {
-    //         const user = await UserService.createUser(req.body);
-
-    //         const token = authMiddleware.createJWT(user.id, user.role);
-    //         res.status(201).json(token);
-    //     } catch (error) {
-    //         next(error);
-    //     }
-    // },
-
-    /**
-     * Вход пользователя
-     * @param {String} loginParam 
-     * @param {String} password
-     * @param {*} next 
-     */
-    loginUser: async (req, res, next) => {
-        const { loginParam, password } = req.body;
+    getUserAccount: async (req, res, next) => {
+        const user = req.user;
 
         try {
-            let user = await UserService.findUserByParam(loginParam);
+            let userInDb;
 
-            passwordUtil.checkingPassword(password, user.password);
-
-            const token = authMiddleware.createJWT(user.id, user.role);
-            res.status(200).json(token);
-        } catch (error) {
-            next(error);
-        }
-    },
-
-    //Получить список всех пациентов, наверное смотреть может только Админ
-    getAllUser: async (req, res) => {
-        try {
-            const users = await User.find().lean().exec();
-            res.status(200).json(users);
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: err.message });
-        }
-    },
-
-    /**
-     * Обновление паролей
-     * @param {Number} req.param.id 
-     * @param {String} req.body.oldPassword 
-     * @param {String} req.body.newPassword
-     * @returns status(200), message: "Password changed successfully"  
-     */
-    updateUserPassword: async (req, res, next) => {
-        const { id } = req.params;
-        const { oldPassword, newPassword } = req.body;
-        try {
-            if (!id || !oldPassword || !newPassword) {
-                throw new Error("Valid data error");
+            if (user.role === "clinic") {
+                userInDb = await ClinicService.getClinicById(user.id);
+            } else {
+                userInDb = await UserService.getUserById(user.id, user.role);
             }
 
-            await UserService.updatePassword(id, oldPassword, newPassword);
+            res.status(200).json(userInDb);
+        } catch (err) {
+            next(err);
+        }
+    },
+    updateUser: async (req, res, next) => {
+        const { userData, addressData } = req.body;
+        const userId = req.user.id;
+
+        try {
+            await UserService.updateUser(userId, userData, addressData);
+            res.status(200).json({ message: "User update successfully" });
+        } catch (err) {
+            next(err);
+        }
+    },
+    updateUserPassword: async (req, res, next) => {
+        const { oldPassword, newPassword } = req.body;
+        const user = req.user;
+
+        try {
+            if (!user || !oldPassword || !newPassword) {
+                throw new AppError("Valid data error", 400);
+            }
+
+            await UserService.updatePassword(user, oldPassword, newPassword);
             res.status(200).json({ message: "Password changed successfully" });
         } catch (err) {
             next(err);
         }
+    },
+    deleteUser: async (req, res, next) => {
+        const user = req.user;
+
+        try {
+            if (user.role === "clinic") {
+                await ClinicService.deleteClinicById(user.id);
+            } else {
+                await UserService.deleteUserById(user.id);
+            }
+            req.logout((err) => {
+                if (err) throw new AppError("Error during logout", 500);
+
+                req.session.destroy((err) => {
+                    if (err) {
+                        return next(new AppError("Error destroying session", 500));
+                    }
+                    res.clearCookie('connect.sid');
+                    res.status(200).json({ message: "User deleted successfully" });
+                });
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+    updateImage: async (req, res, next) => {
+        const userId = req.user.id;
+
+        if (req.file) {
+            const image = req.file.path;
+
+            try {
+                await UserService.updateImage(userId, image);
+                res.status(200).json({ message: "Image uploaded successfully" });
+            } catch (err) {
+                next(err);
+            }
+        } else {
+            res.status(400).json({ message: "Please provide an image file in the request" });
+        }
     }
-};
+}
 
 module.exports = UserController;

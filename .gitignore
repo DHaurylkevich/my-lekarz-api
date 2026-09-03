@@ -1,7 +1,11 @@
 node_modules
 package-lock.json
+/mochawesome-report
 .DS_Store
 *.bak
 .env
 .vercel
 .mocharc.json
+.vscode
+load-test.js
+coverage

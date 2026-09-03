@@ -1,99 +1,58 @@
-const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('appointments', {
-    appointment_id: {
-      autoIncrement: true,
-      type: DataTypes.INTEGER,
+'use strict';
+const { Model } = require('sequelize');
+module.exports = (sequelize, DataTypes) => {
+  class Appointments extends Model {
+    static associate(models) {
+      Appointments.belongsTo(models.Patients, {
+        foreignKey: "patient_id",
+        as: 'patient',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      });
+      Appointments.belongsTo(models.Clinics, {
+        foreignKey: "clinic_id",
+        as: "clinic"
+      });
+      Appointments.belongsTo(models.Schedules, {
+        foreignKey: "schedule_id",
+      });
+      Appointments.belongsTo(models.DoctorService, {
+        foreignKey: 'doctor_service_id',
+        as: 'doctorService'
+      });
+    }
+  }
+  Appointments.init({
+    id: {
+      type: DataTypes.BIGINT,
       allowNull: false,
+      autoIncrement: true,
       primaryKey: true
     },
-    patient_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'patients',
-        key: 'patient_id'
-      }
-    },
-    doctor_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'doctors',
-        key: 'doctor_id'
-      }
-    },
-    appointment_date: {
-      type: DataTypes.DATE,
+    time_slot: {
+      type: DataTypes.TIME,
       allowNull: false
     },
-    status: {
-      type: DataTypes.ENUM('scheduled','completed','canceled'),
-      allowNull: false,
-      defaultValue: "scheduled"
-    },
-    visit_type: {
-      type: DataTypes.ENUM('prywatna','NFZ'),
-      allowNull: false
-    },
-    center_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'medical_centers',
-        key: 'center_id'
-      }
-    },
-    visit_purpose: {
-      type: DataTypes.STRING(255),
+    description: {
+      type: DataTypes.STRING,
       allowNull: true
     },
     first_visit: {
       type: DataTypes.BOOLEAN,
-      allowNull: false
-    },
-    comment: {
-      type: DataTypes.TEXT,
       allowNull: true
     },
-    documents: {
-      type: DataTypes.TEXT,
+    visit_type: {
+      type: DataTypes.ENUM('prywatna', 'NFZ'),
       allowNull: true
-    }
+    },
+    status: {
+      type: DataTypes.ENUM('active', 'completed'),
+      allowNull: true
+    },
   }, {
     sequelize,
+    modelName: 'Appointments',
     tableName: 'appointments',
-    timestamps: true,
-    indexes: [
-      {
-        name: "PRIMARY",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "appointment_id" },
-        ]
-      },
-      {
-        name: "patient_id",
-        using: "BTREE",
-        fields: [
-          { name: "patient_id" },
-        ]
-      },
-      {
-        name: "doctor_id",
-        using: "BTREE",
-        fields: [
-          { name: "doctor_id" },
-        ]
-      },
-      {
-        name: "center_id",
-        using: "BTREE",
-        fields: [
-          { name: "center_id" },
-        ]
-      },
-    ]
   });
+  return Appointments;
 };

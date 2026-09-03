@@ -1,104 +1,82 @@
-const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('doctors', {
-    doctor_id: {
-      autoIncrement: true,
+'use strict';
+const { Model } = require('sequelize');
+module.exports = (sequelize, DataTypes) => {
+  class Doctors extends Model {
+    static associate(models) {
+      Doctors.belongsTo(models.Users, {
+        foreignKey: 'user_id',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+        as: "user"
+      });
+      Doctors.belongsTo(models.Clinics, {
+        foreignKey: 'clinic_id',
+        as: 'clinic'
+      });
+      Doctors.belongsTo(models.Specialties, {
+        foreignKey: 'specialty_id',
+        as: 'specialty',
+      });
+      Doctors.belongsToMany(models.Services, {
+        through: models.DoctorService,
+        foreignKey: 'doctor_id',
+        otherKey: 'service_id',
+        as: 'services',
+      });
+      Doctors.hasMany(models.Schedules, {
+        foreignKey: "doctor_id",
+        onDelete: 'CASCADE',
+      });
+      Doctors.hasMany(models.Documents, {
+        foreignKey: "doctor_id",
+        as: "documents"
+      });
+      Doctors.hasMany(models.Reviews, {
+        foreignKey: "doctor_id",
+        as: "reviews"
+      });
+      Doctors.hasMany(models.Prescriptions, {
+        foreignKey: 'doctor_id',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      });
+    }
+  }
+  Doctors.init({
+    id: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      autoIncrement: true,
       primaryKey: true
     },
     user_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'user_id'
-      }
-    },
-    specialty: {
-      type: DataTypes.STRING(255),
       allowNull: true
     },
-    experience: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    center_id: {
+    clinic_id: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'medical_centers',
-        key: 'center_id'
-      }
-    },
-    street: {
-      type: DataTypes.STRING(255),
       allowNull: true
     },
-    building_number: {
-      type: DataTypes.STRING(10),
-      allowNull: true
-    },
-    apartment_number: {
-      type: DataTypes.STRING(10),
-      allowNull: true
-    },
-    city: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
-    postal_code: {
-      type: DataTypes.CHAR(6),
-      allowNull: true
-    },
-    pesel: {
-      type: DataTypes.CHAR(11),
-      allowNull: true,
-      unique: "pesel"
-    },
-    bio: {
-      type: DataTypes.TEXT,
+    specialty_id: {
+      type: DataTypes.INTEGER,
       allowNull: true
     },
     rating: {
-      type: DataTypes.DECIMAL(3,2),
-      allowNull: true
-    }
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
+    hired_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   }, {
     sequelize,
+    modelName: 'Doctors',
     tableName: 'doctors',
-    timestamps: true,
-    indexes: [
-      {
-        name: "PRIMARY",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "doctor_id" },
-        ]
-      },
-      {
-        name: "pesel",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "pesel" },
-        ]
-      },
-      {
-        name: "user_id",
-        using: "BTREE",
-        fields: [
-          { name: "user_id" },
-        ]
-      },
-      {
-        name: "fk_doctor_center_id",
-        using: "BTREE",
-        fields: [
-          { name: "center_id" },
-        ]
-      },
-    ]
   });
+  return Doctors;
 };

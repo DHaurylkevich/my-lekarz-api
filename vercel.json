@@ -1,9 +1,27 @@
 {
     "version": 2,
-    "rewrites": [
+    "builds": [
         {
-            "source": "/(.*)",
-            "destination": "/api"
+            "src": "index.js",
+            "use": "@vercel/node"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/index.js"
+        },
+        {
+            "src": "/swagger-ui-bundle.js",
+            "dest": "/index.js"
+        },
+        {
+            "src": "/swagger-ui-standalone-preset.js",
+            "dest": "/index.js"
+        },
+        {
+            "src": "/swagger-ui.css",
+            "dest": "/index.js"
         }
     ]
 }

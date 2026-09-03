@@ -1,60 +1,165 @@
-const TEST = require("../../tests/unit/services/usersService.test");
-const db = require("../models");
 const sequelize = require("../config/db");
-const UserService = require("../services/userService");
-const AddressService = require("../services/addressService");
-const tokenUtil = require("../middleware/auth");
+const db = require("../models");
+const AppError = require("../utils/appError");
+const { getPaginationParams, getTotalPages } = require("../utils/pagination");
+const { createUser } = require("../services/userService");
 
 const PatientService = {
-    /**
-     * Регистрация пользователя и получение токена
-     * @param {Object} userData 
-     * @param {Object} patientData 
-     * @param {Object} addressData 
-     * @returns {String} token
-     */
-    registerPatient: async (userData, patientData, addressData) => {
+    createPatient: async (userData) => {
         const t = await sequelize.transaction();
 
         try {
-            const createdUser = await UserService.createUser(userData, t);
-
-            const createdAddress = await AddressService.createAddress(addressData, t);
-
-            patientData.user_id = createdUser.id;
-            patientData.address_id = createdAddress.id;
-            await db.Patients.create(patientData, { transaction: t });
-
-            await t.commit();
-            const token = tokenUtil.createJWT(createdUser.id, createdUser.role);
-            return token;
-        } catch (err) {
-            await t.rollback();
-            console.error("Error occurred", err);
-            throw new Error(err.message);
-        }
-    },
-    updatePatient: async (id, userData, patientData, addressData) => {
-        const t = await sequelize.transaction();
-
-        try {
-            const foundPatient = await db.Patients.findByPk(id);
-            if (!foundPatient) {
-                throw new Error("Patient not found")
+            const filter = {};
+            if (userData.email) {
+                filter.email = userData.email;
+            } else {
+                throw new AppError("Need to enter the email", 400);
             }
 
-            await UserService.updateUser(foundPatient.user_id, userData, t);
-            await AddressService.updateAddress(foundPatient.address_id, addressData, t)
-            await foundPatient.update(patientData, t);
+            userData.role = "patient";
+            const createdUser = await createUser(userData, t);
+
+            await createdUser.createPatient({}, { transaction: t });
 
             await t.commit();
-            return foundPatient;
+
+            return createdUser;
         } catch (err) {
             await t.rollback();
-            console.error("Error occurred", err);
             throw err;
         }
+    },
+    getPatientById: async (patientId, user) => {
+        const doctorServiceWhere = user.role === "doctor" ? { doctor_id: user.roleId } : {}
+
+        const patient = await db.Appointments.findOne({
+            attributes: [],
+            include: [
+                {
+                    model: db.Patients,
+                    as: "patient",
+                    where: { id: patientId },
+                    attributes: ["id"],
+                    include: [
+                        {
+                            model: db.Users,
+                            as: "user",
+                            attributes: ["first_name", "last_name", "photo", "phone", "email", "birthday", "gender"],
+                            include: [
+                                {
+                                    model: db.Addresses,
+                                    as: "address",
+                                    attributes: ["city", "home", "street", "flat"],
+                                }
+                            ],
+                        }
+                    ]
+                },
+                {
+                    model: db.DoctorService,
+                    as: "doctorService",
+                    where: doctorServiceWhere,
+                    attributes: [],
+                }
+            ]
+        });
+
+        if (!patient) {
+            throw new AppError("Patient not found", 404);
+        }
+        return patient;
+    },
+    getPatientsByParam: async ({ sort, limit, page, user }) => {
+        let clinicId, doctorId;
+        if (user.role === "doctor") {
+            doctorId = user.roleId;
+            clinicId = null;
+        } else if (user.role === "clinic") {
+            clinicId = user.id;
+        }
+
+        if (!doctorId && !clinicId) {
+            throw new AppError("Either doctorId or clinicId is required", 400);
+        }
+
+        const sortOptions = [{ model: db.Patients, as: "patient" }, { model: db.Users, as: "user" }, "first_name", sort === "asc" ? "ASC" : "DESC"];
+        const appointmentWhere = clinicId ? { clinic_id: clinicId } : {};
+        const doctorServiceWhere = doctorId ? { doctor_id: doctorId } : {};
+
+        const { parsedLimit, offset } = getPaginationParams(limit, page);
+
+        const { rows, count } = await db.Appointments.findAndCountAll({
+            limit: parsedLimit,
+            offset: offset,
+            where: appointmentWhere,
+            attributes: ["id"],
+            order: [sortOptions],
+            include: [
+                {
+                    model: db.Patients,
+                    as: "patient",
+                    attributes: ["id"],
+                    include: [
+                        {
+                            model: db.Users,
+                            as: "user",
+                            attributes: ["first_name", "last_name", "photo", "gender", "phone"],
+                            order: [["first_name", sort === "ASC" ? "ASC" : "DESC"]],
+                            include: [
+                                {
+                                    model: db.Addresses,
+                                    as: "address",
+                                    attributes: ["city", "home", "street", "flat", "post_index"],
+                                }
+                            ],
+                        }
+                    ]
+                },
+                {
+                    model: db.DoctorService,
+                    as: "doctorService",
+                    where: doctorServiceWhere,
+                    attributes: [],
+                }
+            ]
+        });
+
+        const totalPages = getTotalPages(count, parsedLimit, page);
+
+        return { pages: totalPages, patients: rows };
+    },
+    getAllPatientsForAdmin: async ({ sort, gender, limit, page }) => {
+        const userWhere = gender ? { gender } : {};
+
+        const sortOptions = [
+            [{ model: db.Users, as: "user" }, "first_name", sort === "asc" ? "ASC" : "DESC"],
+        ];
+
+        const { parsedLimit, offset } = getPaginationParams(limit, page);
+
+        const { rows, count } = await db.Patients.findAndCountAll({
+            limit: parsedLimit,
+            offset: offset,
+            attributes: [],
+            order: sortOptions,
+            include: [
+                {
+                    model: db.Users,
+                    as: "user",
+                    where: userWhere,
+                    attributes: ["first_name", "last_name", "gender", "createdAt", "birthday"]
+                },
+            ],
+        });
+
+        const totalPages = getTotalPages(count, parsedLimit, page);
+
+        if (!rows.length) {
+            return { pages: 0, patients: [] };
+        }
+
+        return { pages: totalPages, patients: rows };
     }
-}
+};
 
 module.exports = PatientService;

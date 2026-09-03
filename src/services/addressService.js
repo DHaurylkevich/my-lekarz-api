@@ -1,27 +1,16 @@
 const db = require("../models");
-const Address = db.Addresses;
+const AppError = require("../utils/appError");
 
 const AddressService = {
     createAddress: async (addressData, t) => {
-        try {
-            return await Address.create(addressData, { transaction: t })
-        } catch (err) {
-            console.error("Error occurred", err);
-            throw new Error(err.message);
-        }
+        return await db.Addresses.create(addressData, { transaction: t });
     },
-    updateAddress: async (id, addressData, t) => {
-        try {
-            const address = await Address.findByPk(id);
-            if(!address) {
-                throw new Error("Address not found");
-            }
-            
-            return await address.update(addressData, { transaction: t })
-        } catch (err) {
-            console.error("Error occurred", err);
-            throw new Error(err.message);
+    updateAddress: async (address, addressData, t) => {
+        if (!address) {
+            throw new AppError("Address not found");
         }
+
+        return await address.update(addressData, { transaction: t })
     }
 }
 

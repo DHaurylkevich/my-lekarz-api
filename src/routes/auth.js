@@ -1,98 +1,175 @@
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/user")
-const Patient = require("../models/patient");
-const Doctor = require("../models/doctor")
+const passport = require("passport");
+const AppError = require("../utils/appError");
+const AuthController = require("../controllers/authController");
 
-router.post("/register", async (req, res) => {
-    const { 
-        email, 
-        password,
-        role, 
-        name, 
-        contact, 
-        specialization, 
-        age, 
-        medicalHistory 
-    } = req.body;
-
-    try {
-        let user = await User.findOne({ email });
-        if (user) {
-            return res.status(400).json( {message: "Пользователь с таким email существует"} );
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: User authentication
+ *     tags: [Auth]
+ *     servers:
+ *       - url: http://localhost:3000
+ *       - url: https://doc-web-rose.vercel.app
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               loginParam:
+ *                 type: string
+ *                 description: User's email, phone, or PESEL
+ *                 example: "doctor@gmail.com"
+ *               password:
+ *                 type: string
+ *                 description: User's password
+ *                 example: "123456789"
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ */
+router.post("/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+        if (err) {
+            return next(err);
         }
-        
-        user = new User({
-            email,
-            password: await bcrypt.hash(password, 10),
-            role
-        });
-        
-        const saveUser = await user.save();
-
-        if (roll == "doctor") {
-            const doctor = new Doctor({
-                name,
-                specialization,
-                contact,
-                userId: saveUser._id
-            });
-            const saveDoctor = await doctor.save();
-            res.status(201).json({ saveUser, saveDoctor})
-        } else if (role === "patient") {
-            const patient = new Patient({
-                name,
-                age,
-                contact,
-                medicalHistory,
-                userId: saveUser._id
-            });
-            const savePatient = await patient.save();
-            res.status(201).json( saveUser, savePatient);
-        } else {
-            res.status(400).json({ message: "Некорректная роль" });
-        }
-    } catch (err){
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
-});
-
-router.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-    
-    try{
-        const user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json( {message: "Неверный email или пароль"} );
+            return next(new AppError(info.message || "Invalid credentials", 404));
         }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: "Неверный email или пароль" });
-        };
-
-        const payload = {
-            user: {
-                id: user._id,
-                role: user._role,
+        req.logIn(user, (err) => {
+            if (err) {
+                return next(err);
             }
-        };
-        jwt.sign(
-            payload,
-            process.env.JST_SECRET,
-            { expiresIn: "1h" },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token });
-            }
-        );
-    } catch (err){
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
+            return AuthController.login(req, res, next, info);
+        });
+    })(req, res, next);
 });
+/**
+ * @swagger
+ * /register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     servers:
+ *       - url: http://localhost:3000
+ *       - url: https://doc-web-rose.vercel.app
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "test@gmail.com"
+ *               password:
+ *                 type: string
+ *                 example: "123456789"
+ */
+router.post("/register", AuthController.register);
+/**
+ * @swagger
+ * /logout:
+ *   get:
+ *     summary: User logout
+ *     tags: [Auth]
+ *     servers:
+ *       - url: http://localhost:3000
+ *       - url: https://doc-web-rose.vercel.app
+ *     responses:
+ *       '200':
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ */
+router.get("/logout", AuthController.logout);
+/**
+ * @swagger
+ * /auth/google:
+ *   get:
+ *     summary: Start Google authentication
+ *     tags: [Auth]
+ *     servers:
+ *       - url: http://localhost:3000
+ *       - url: https://doc-web-rose.vercel.app
+ */
+router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+/**
+ * @swagger
+ * /auth/google/callback:
+ *   get:
+ *     summary: Google authentication callback URL
+ *     tags: [Auth]
+ *     servers:
+ *       - url: http://localhost:3000
+ *       - url: https://doc-web-rose.vercel.app
+ */
+router.get("/auth/google/callback",
+    passport.authenticate("google", { failWithError: true, failureMessage: true, failureRedirect: 'https://mojlekarz.netlify.app/login' }), AuthController.googleCallback);
+/**
+ * @swagger
+ *   /forgot-password:
+ *     post:
+ *       summary: Sends a password reset link
+ *       description: Sends a password reset token to the email of an existing user or clinic. The link may be malformed because the correct password reset page address is needed.
+ *       tags: [Auth]
+ *       servers:
+ *         - url: http://localhost:3000
+ *         - url: https://doc-web-rose.vercel.app
+ *       requestBody:
+ *         description: User's email
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 email:
+ *                   type: string
+ *                   example: email@gmail.com
+ *                   description: Email
+ */
+router.post("/forgot-password", AuthController.requestPasswordReset);
+/**
+ * @swagger
+ * /set-password:
+ *   post:
+ *     summary: Sets a new password for the user or clinic
+ *     tags: [Auth]
+ *     servers:
+ *       - url: http://localhost:3000
+ *       - url: https://doc-web-rose.vercel.app
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ */
+router.post("/set-password", AuthController.setPassword);
 
 module.exports = router;

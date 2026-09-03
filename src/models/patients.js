@@ -1,16 +1,28 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Patients extends Model {
     static associate(models) {
       Patients.belongsTo(models.Users, {
-        foreignKey: 'user_id',
-        onDelete: 'CASCADE'
+        foreignKey: "user_id",
+        as: "user",
       });
-      Patients.belongsTo(models.Addresses, {
-        foreignKey: 'address_id'
+      Patients.hasMany(models.Appointments, {
+        foreignKey: "patient_id",
+        as: "appointments",
+      });
+      Patients.hasMany(models.Documents, {
+        foreignKey: "patient_id",
+        as: "documents"
+      });
+      Patients.hasMany(models.Reviews, {
+        foreignKey: "patient_id",
+        as: "reviews"
+      });
+      Patients.hasMany(models.Prescriptions, {
+        foreignKey: "patient_id",
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
       });
     }
   }
@@ -21,26 +33,16 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true,
       primaryKey: true
     },
-    user_id: {
+    feedbackRating: {
       type: DataTypes.INTEGER,
-      allowNull: false
+      max: 5,
+      min: 0,
+      allowNull: true,
     },
-    gender: {
-      type: DataTypes.ENUM('male', 'female', 'other'),
-      allowNull: true
-    },
-    address_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true
-    },
-    market_inf: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true
-    }
   }, {
     sequelize,
-    modelName: 'Patients',
-    timestamps: true,
+    modelName: "Patients",
+    tableName: "patients",
   });
   return Patients;
 };

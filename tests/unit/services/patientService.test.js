@@ -2,106 +2,126 @@ require("dotenv").config();
 process.env.NODE_ENV = 'test';
 
 const sinon = require("sinon");
+const rewire = require('rewire');
 const { expect, use } = require("chai");
 const chaiAsPromised = require("chai-as-promised");
+const { faker } = require('@faker-js/faker');
 const db = require("../../../src/models");
 const sequelize = require("../../../src/config/db");
 const UserService = require("../../../src/services/userService");
-const PatientService = require("../../../src/services/patientService");
+const PatientService = rewire("../../../src/services/patientService");
 const AddressService = require("../../../src/services/addressService");
-const tokenUtil = require("../../../src/middleware/auth");
+const AppError = require("../../../src/utils/appError");
 
 use(chaiAsPromised);
 
 describe("Patient Service", () => {
+    afterEach(() => {
+        sinon.restore();
+    });
     describe("Positive tests", () => {
-        afterEach(async () => {
-            sinon.restore();
-        });
-        describe("registrationPatient() => Registration:", () => {
-            let transactionStub, createUserServiceStub, createPatientStub, createAddressServiceStub, createJWTStub;
+        describe("createPatient", () => {
+            let transactionStub, createPatientStub;
 
             beforeEach(async () => {
                 transactionStub = {
-                    commit: sinon.stub(),
-                    rollback: sinon.stub(),
+                    commit: sinon.stub().resolves(),
+                    rollback: sinon.stub().resolves()
                 };
                 sinon.stub(sequelize, "transaction").resolves(transactionStub);
-                createUserServiceStub = sinon.stub(UserService, "createUser");
-                createAddressServiceStub = sinon.stub(AddressService, "createAddress");
-                createPatientStub = sinon.stub(db.Patients, "create");
-                createJWTStub = sinon.stub(tokenUtil, "createJWT");
+                createUserStub = sinon.stub(db.Users, "create");
+                PatientService.__set__('createUser', createUserStub);
+                createPatientStub = sinon.stub();
             });
+            it("expect user and patient to be created with transaction and return user data, when valid data", async () => {
+                const userData = { email: faker.internet.email(), password: faker.internet.password() };
+                const newUser = { id: 1, email: faker.internet.email() };
+                createUserStub.resolves({ newUser, createPatient: createPatientStub });
+                createPatientStub.resolves({ id: 1, user_id: 1 });
 
-            afterEach(async () => {
-                sinon.restore();
-            });
+                const result = await PatientService.createPatient(userData);
 
-            it("expect user and patient to be created with transaction and return token", async () => {
-                const newUser = { id: 1, data: "foo" };
-                const newPatient = { gender: "foo", market_inf: true };
-                const newAddress = { city: "foo", street: "foo", home: 1, flat: 1, post_index: "123-1234" };
-                createUserServiceStub.resolves(newUser);
-                createAddressServiceStub.resolves({ ...newAddress, id: 1 });
-                createPatientStub.resolves({ ...newPatient, id: 1 });
-                createJWTStub.resolves("fake-JWT-Token");
-
-                const result = await PatientService.registerPatient(newUser, newPatient, newAddress);
-
-                expect(createUserServiceStub.calledOnceWith(newUser)).to.be.true;
-                expect(createAddressServiceStub.calledOnceWith(newAddress)).to.be.true;
-                expect(createPatientStub.calledOnceWith(
-                    { ...newPatient, user_id: newUser.id, address_id: 1 },
-                    { transaction: sinon.match.any }
-                )).to.be.true;
+                expect(createUserStub.calledOnce).to.be.true;
+                expect(createPatientStub.calledOnce).to.be.true;
+                expect(result.newUser).to.deep.equals(newUser);
                 expect(transactionStub.commit.calledOnce).to.be.true;
-                expect(result).to.equals("fake-JWT-Token");
             });
         });
-        describe("updatePatient() => Update:", () => {
-            let findByPkPatientStub, updatePatientStub, transactionStub, updateUserServiceStub, updateAddressServiceStub;
+        describe("getPatientByParam", () => {
+            let findAndCountAllStub;
 
-            beforeEach(async () => {
-                transactionStub = {
-                    commit: sinon.stub(),
-                    rollback: sinon.stub(),
+            beforeEach(() => {
+                findAndCountAllStub = sinon.stub(db.Appointments, "findAndCountAll");
+            });
+            it("expect correctly apply 'sort':asc parameter for ascending order", async () => {
+                const fakeAppointments = [
+                    { id: 1, createdAt: new Date("2023-01-01") },
+                    { id: 2, createdAt: new Date("2023-01-02") }
+                ];
+                findAndCountAllStub.resolves({ rows: fakeAppointments, count: 2 });
+
+                const result = await PatientService.getPatientsByParam({
+                    sort: 'asc',
+                    limit: 1,
+                    pages: 0,
+                    user: {
+                        id: 1,
+                        role: 'doctor',
+                        roleId: 1,
+                    }
+                });
+
+                expect(findAndCountAllStub.calledOnce).to.be.true;
+                expect(result).to.have.property("pages", 2);
+            });
+            it('expect to return patients filtered by clinicId, when only clinicId is provided', async () => {
+                const fakeAppointments = [
+                    { id: 1, createdAt: new Date("2023-01-01") },
+                    { id: 2, createdAt: new Date("2023-01-02") }
+                ];
+                findAndCountAllStub.resolves({ rows: fakeAppointments, count: 2 });
+
+                const result = await PatientService.getPatientsByParam({
+                    sort: 'asc',
+                    limit: 1,
+                    pages: 0,
+                    user: {
+                        id: 1,
+                        role: 'clinic',
+                    }
+                });
+
+                expect(findAndCountAllStub.calledOnce).to.be.true;
+                expect(result).to.have.property("pages", 2);
+            });
+        });
+        describe("getPatientById", () => {
+            it("expect return the correct patient data, when a valid patientId and user role is a 'doctor'", async () => {
+                const userId = 1;
+                const fakePatient = {
+                    id: 1,
+                    user: {
+                        id: userId,
+                        first_name: 'John',
+                        last_name: 'Doe',
+                        address: {
+                            city: 'Test City',
+                            street: 'Test Street'
+                        }
+                    }
                 };
-                sinon.stub(sequelize, "transaction").resolves(transactionStub);
-                findByPkPatientStub = sinon.stub(db.Patients, "findByPk");
-                updateUserServiceStub = sinon.stub(UserService, "updateUser");
-                updateAddressServiceStub = sinon.stub(AddressService, "updateAddress");
-                updatePatientStub = sinon.stub(db.Patients, "update");
-            });
-            afterEach(async () => {
-                sinon.restore();
-            });
-            it("when user is in DB and has a valid data, expect to update user and get updated user data successfully", async () => {
-                const id = 1;
-                const userData = { email: "FOO" };
-                const patientData = { gender: "FOO" };
-                const addressData = { city: "FOO" };
-                const foundPatient = { id, user_id: 2, address_id: 3, update: updatePatientStub };
-                findByPkPatientStub.resolves(foundPatient);
-                updateUserServiceStub.resolves();
-                updateAddressServiceStub.resolves();
-                updatePatientStub.resolves({ id, ...userData });
+                const findOneStub = sinon.stub(db.Appointments, "findOne").resolves(fakePatient);
 
-                await PatientService.updatePatient(id, userData, patientData, addressData);
+                const result = await PatientService.getPatientById(1, { id: 1, role: "doctor", roleId: 2 });
 
-                expect(findByPkPatientStub.calledOnceWith(id)).to.be.true;
-                expect(updateUserServiceStub.calledOnceWith(foundPatient.user_id, userData, transactionStub)).to.be.true;
-                expect(updateAddressServiceStub.calledOnceWith(foundPatient.address_id, addressData, transactionStub)).to.be.true;
-                expect(updatePatientStub.calledOnceWith(patientData, transactionStub)).to.be.true;
-                expect(transactionStub.commit.calledOnce).to.be.true;
+                expect(findOneStub.calledOnce).to.be.true;
+                expect(result).to.deep.equal(fakePatient);
             });
         });
     });
-    describe("Error tests", () => {
-        afterEach(async () => {
-            sinon.restore();
-        });
-        describe("registrationPatient() => Registration:", () => {
-            let transactionStub, createUserServiceStub, createPatientStub, createAddressServiceStub;
+    describe("Negative tests", () => {
+        describe("createPatient", () => {
+            let transactionStub, createUserStub;
 
             beforeEach(async () => {
                 transactionStub = {
@@ -109,70 +129,64 @@ describe("Patient Service", () => {
                     rollback: sinon.stub(),
                 };
                 sinon.stub(sequelize, "transaction").resolves(transactionStub);
-                createUserServiceStub = sinon.stub(UserService, "createUser");
-                createAddressServiceStub = sinon.stub(AddressService, "createAddress");
-                createPatientStub = sinon.stub(db.Patients, "create");
+                createUserStub = sinon.stub(db.Users, "create");
             });
+            it("expect Error('Need to enter the email'), when email don't enter", async () => {
+                const userData = { password: "testPassword" };
 
-            it("expect transaction to rollback if error occurs and throw Error 'Create user failed'", async () => {
-                const newUser = "ERROR";
-                const newAddress = "FOO";
-                const newPatient = "FOO"
-                createUserServiceStub.rejects(new Error("Create user failed"));
+                await expect(PatientService.createPatient(userData)).to.be.rejectedWith(AppError, "Need to enter the email");
 
-                await expect(PatientService.registerPatient(newUser, newPatient, newAddress)).to.be.rejectedWith(Error, "Create user failed");
-
-                expect(transactionStub.rollback.calledOnce).to.be.true;
-                expect(createPatientStub.calledOnce).to.be.false;
-                expect(createAddressServiceStub.calledOnce).to.be.false;
-            });
-            it("expect transaction to rollback if error occurs and throw Error 'Create address failed'", async () => {
-                const newUser = { id: 1, data: "foo" };
-                const newAddress = "ERROR";
-                const newPatient = "FOO";
-                createUserServiceStub.resolves(newUser);
-                createAddressServiceStub.rejects(new Error("Create address failed"));
-
-                await expect(PatientService.registerPatient(newUser, newPatient, newAddress)).to.be.rejectedWith(Error, "Create address failed");
-                expect(transactionStub.rollback.calledOnce).to.be.true;
-                expect(createUserServiceStub.calledOnceWith(newUser)).to.be.true;
-                expect(createPatientStub.calledOnce).to.be.false;
-            });
-            it("expect transaction to rollback if error occurs and throw Error 'Create address failed'", async () => {
-                const newUser = { id: 1, data: "foo" };
-                const newAddress = { city: "foo", street: "foo", home: 1, flat: 1, post_index: "123-1234" };
-                const newPatient = { gender: "foo", market_inf: true };
-                createAddressServiceStub.resolves({ ...newAddress, id: 1 });
-                createUserServiceStub.resolves(newUser);
-                createPatientStub.rejects(new Error("Create patient failed"));
-
-                await expect(PatientService.registerPatient(newUser, newPatient, newAddress)).to.be.rejectedWith(Error, "Create patient failed");
+                expect(transactionStub.commit.called).to.be.false;
                 expect(transactionStub.rollback.calledOnce).to.be.true;
             });
         });
-        describe("updatePatient() => Update:", () => {
-            let findByPkPatientStub, updatePatientStub, transactionStub;
+        describe("getPatientByParam", () => {
+            let findAllStub;
 
-            beforeEach(async () => {
-                transactionStub = {
-                    commit: sinon.stub(),
-                    rollback: sinon.stub(),
+            beforeEach(() => {
+                findAllStub = sinon.stub(db.Appointments, "findAll");
+            });
+            it("expect throw an error 'Either doctorId or clinicId is required', when neither doctorId nor clinicId is provided", async () => {
+                const params = { sort: 'asc', limit: 10, pages: 0, user: { id: 1, role: "patient" } };
+
+                await expect(PatientService.getPatientsByParam(params))
+                    .to.be.rejectedWith(AppError, "Either doctorId or clinicId is required");
+            });
+            it("expect throw any unexpected errors that occur during the database query", async () => {
+                const error = new Error("Database connection error");
+                findAllStub.rejects(error);
+
+                const params = {
+                    sort: 'asc',
+                    limit: 10,
+                    pages: 0,
+                    user: { id: 1, role: "clinic" }
                 };
-                sinon.stub(sequelize, "transaction").resolves(transactionStub);
-                findByPkPatientStub = sinon.stub(db.Patients, "findByPk");
-                updatePatientStub = sinon.stub(db.Patients, "update");
-            })
-            it("expect transaction to rollback if error occurs and throw Error 'Patient not found'", async () => {
-                const id = 1;
-                const userData = { email: "FOO" };
-                const patientData = { gender: "FOO" };
-                const addressData = { city: "FOO" };
-                findByPkPatientStub.resolves(false);
 
-                await expect(PatientService.updatePatient(id, userData, patientData, addressData)).to.be.rejectedWith(Error, "Patient not found");
+                await expect(PatientService.getPatientsByParam(params)).to.be.rejectedWith(Error, "Database connection error");
 
-                expect(findByPkPatientStub.calledOnceWith(id)).to.be.true;
-                expect(updatePatientStub.calledOnce).to.be.false;
+                expect(findAllStub.calledOnce).to.be.true;
+            });
+        });
+        describe("getPatientById", () => {
+            let findOneStub;
+            beforeEach(() => {
+                findOneStub = sinon.stub(db.Appointments, "findOne").resolves(null);
+            });
+            it("expect throw an AppError('Patient not found'), with status 404 when patient is not found ", async () => {
+                findOneStub.resolves(null);
+
+                await expect(PatientService.getPatientById(1, { id: 1, role: "patient" })).to.be.rejectedWith(AppError, "Patient not found");
+
+                expect(findOneStub.calledOnce).to.be.true;
+            });
+            it("expect throw an AppError('Database query failed') by the database query ", async () => {
+                const error = new Error("Database query failed");
+                findOneStub.rejects(error);
+
+                await expect(PatientService.getPatientById(1, { id: 1, role: "patient" })).to.be.rejectedWith(Error, "Database query failed");
+
+                expect(findOneStub.calledOnce).to.be.true;
             });
         });
     });
