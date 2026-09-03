@@ -1,27 +1,46 @@
 const messageService = require("../services/messageService");
 
 const messageController = {
-    createMessage: async (req, res) => {
+    createMessage: async (req, res, next) => {
         const { chatId } = req.params;
-        const messageData = req.body;
-        messageData.file_url = req.file ? req.file.path : null;
-        messageData.chat_id = chatId;
+        const { content } = req.body;
 
-        const message = await messageService.createMessage(messageData);
-        res.status(200).json(message);
+        try {
+            const messageData = {
+                chat_id: chatId,
+                sender_id: req.user.id,
+                sender_type: req.user.role === "clinic" ? "clinic" : "user",
+                content,
+                file_url: req.file ? req.file.path : null,
+            };
+
+            const message = await messageService.createMessage(messageData);
+            res.status(200).json(message);
+        } catch (err) {
+            next(err);
+        }
     },
-    getMessages: async (req, res) => {
+    getMessages: async (req, res, next) => {
         const { chatId } = req.params;
-        const { limit = 15, offset = 0 } = req.query;
+        const limit = parseInt(req.query.limit) || 15;
+        const offset = parseInt(req.query.offset) || 0;
 
-        const messages = await messageService.getMessagesByChatId(chatId, limit, offset);
-        res.status(200).json(messages);
+        try {
+            const messages = await messageService.getMessagesByChatId({ chatId, userId: req.user.id, limit, offset });
+            res.status(200).json(messages);
+        } catch (err) {
+            next(err);
+        }
     },
-    deleteMessage: async (req, res) => {
+    deleteMessage: async (req, res, next) => {
         const { messageId } = req.params;
 
-        const message = await messageService.deleteMessage(messageId);
-        res.status(200).json(message);
+        try {
+            const message = await messageService.deleteMessage(messageId, req.user);
+            res.status(200).json(message);
+        } catch (err) {
+            next(err);
+        }
     }
 };
 

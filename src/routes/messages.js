@@ -1,8 +1,9 @@
 const router = require("express").Router();
 const messageController = require("../controllers/messageController");
+const { isAuthenticated } = require("../middleware/auth");
 const { uploadFiles } = require("../middleware/upload");
 
-router.post("/chats/:chatId/messages", uploadFiles.single("file"), messageController.createMessage);
+router.post("/chats/:chatId/messages", isAuthenticated, uploadFiles.single("file"), messageController.createMessage);
 /**
  * @swagger
  * /chats/{chatId}/messages:
@@ -19,7 +20,7 @@ router.post("/chats/:chatId/messages", uploadFiles.single("file"), messageContro
  *       200:
  *         description: Message's array
  */
-router.get("/users/chats/:chatId/messages", messageController.getMessages);
+router.get("/users/chats/:chatId/messages", isAuthenticated, messageController.getMessages);
 /**
  * @swagger
  * /users/messages/{messageId}:
@@ -36,6 +37,6 @@ router.get("/users/chats/:chatId/messages", messageController.getMessages);
  *       200:
  *         description: Successful
  */
-router.delete("/users/messages/:messageId", messageController.deleteMessage);
+router.delete("/users/messages/:messageId", isAuthenticated, messageController.deleteMessage);
 
 module.exports = router;

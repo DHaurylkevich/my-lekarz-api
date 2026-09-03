@@ -17,30 +17,39 @@ const validateRequest = (req, res, next) => {
 };
 
 const errorHandler = (err, req, res, next) => {
-    err.statusCode = err.statusCode || 500;
-    err.status = err.status || "Error";
     if (res.headersSent) {
         return next(err);
     }
 
+    err.statusCode = err.statusCode || 500;
+    err.status = err.status || "error";
+    const isDev = NODE_ENV === "test" || NODE_ENV === "development";
 
-    if (err.isOperational || NODE_ENV === "test" || NODE_ENV === "development") {
+    if (err.isOperational || isDev) {
         logger.warn(`${err.statusCode} - ${err.message}`);
-        console.log({
-            message: err.message,
-            error: err
-        });
 
-        res.status(err.statusCode).json({
+        if (isDev) {
+            console.log({
+                message: err.message,
+                error: err
+            });
+        }
+
+        const body = {
             status: err.status,
-            message: err.message,
-            stack: err.stack,
-            error: err
-        })
+            message: err.message
+        };
+
+        if (isDev) {
+            body.stack = err.stack;
+        }
+
+        res.status(err.statusCode).json(body);
     } else {
-        res.status(500).json({
+        logger.error(`${err.statusCode} - ${err.message}`);
+        res.status(err.statusCode).json({
             status: "error",
-            message: err.message || "Internal Server Error"
+            message: "Internal Server Error"
         });
     }
 };

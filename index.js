@@ -17,12 +17,7 @@ startCron();
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'http://localhost:5173',
-    'https://localhost:5173',
     "https://doc-web-rose.vercel.app",
-    "https://mojlekarz.netlify.app",
-    "https://stellar-proximal-handspring.glitch.me",
-    "https://nimble-manatee-0b5260.netlify.app",
     "https://accounts.google.com/o/oauth2/v2/auth"
   ],
   credentials: true,

@@ -19,11 +19,15 @@ const chatController = {
         const chat = await chatService.getChatById(chatId);
         res.status(200).json(chat);
     },
-    deleteChat: async (req, res) => {
+    deleteChat: async (req, res, next) => {
         const { chatId } = req.params;
 
-        const chat = await chatService.deleteChat(chatId);
-        res.status(200).json(chat);
+        try {
+            const chat = await chatService.deleteChat(chatId, req.user);
+            res.status(200).json(chat);
+        } catch (err) {
+            next(err);
+        }
     }
 };
 

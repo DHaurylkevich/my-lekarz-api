@@ -26,9 +26,10 @@ const AppointmentController = {
     getAppointmentsByPatientId: async (req, res, next) => {
         const { patientId } = req.params;
         const { limit, page } = req.query;
+        const doctorId = req.user.roleId;
 
         try {
-            const appointments = await AppointmentService.getAppointmentsByPatientId(patientId, limit, page);
+            const appointments = await AppointmentService.getAppointmentsByPatientId(patientId, doctorId, limit, page);
             res.status(200).json(appointments);
         } catch (err) {
             next(err);

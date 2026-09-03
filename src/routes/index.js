@@ -76,7 +76,7 @@ router.post("/api/user/role", (req, res, next) => {
     res.status(201).json("Successful");
 });
 
-router.post("/api/upload/file", upload.single("file"), (req, res) => {
+router.post("/api/upload/file", isAuthenticated, upload.single("file"), (req, res) => {
     res.json({ message: "File uploaded successfully", fileUrl: req.file.path });
 });
 

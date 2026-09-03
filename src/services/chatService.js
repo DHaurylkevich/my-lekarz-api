@@ -130,11 +130,17 @@ const chatService = {
             throw new AppError("Error" + err.messages, 500);
         }
     },
-    deleteChat: async (chatId) => {
-        const chat = await db.Chats.destroy({
-            where: { id: chatId }
+    deleteChat: async (chatId, user) => {
+        const userType = user.role !== "clinic" ? "user" : "clinic";
+
+        const participant = await db.ChatParticipants.findOne({
+            where: { chat_id: chatId, user_id: user.id, user_type: userType }
         });
-        return chat;
+        if (!participant) {
+            throw new AppError("Chat not found", 404);
+        }
+
+        return await db.Chats.destroy({ where: { id: chatId } });
     }
 };
 

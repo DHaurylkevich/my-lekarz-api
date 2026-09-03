@@ -29,9 +29,13 @@ const AuthController = {
 
             req.login(user, (err) => {
                 if (err) {
-                    throw new AppError("Error during login", 500);
+                    return next(new AppError("Error during login", 500));
                 }
-                res.json({ user, message: "Registration successful" });
+
+                const userData = user.toJSON();
+                delete userData.password;
+                delete userData.resetToken;
+                res.json({ user: userData, message: "Registration successful" });
             });
         } catch (err) {
             next(err);

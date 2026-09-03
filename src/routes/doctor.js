@@ -548,6 +548,6 @@ router.get("/clinics/:clinicId/doctors", doctorController.getDoctorsByClinicWith
  *                   type: string
  *                   example: "Doctor deleted successfully"
  */
-router.delete("/clinics/doctors/:doctorId", doctorController.deleteDoctor);
+router.delete("/clinics/doctors/:doctorId", isAuthenticated, hasRole("clinic"), doctorController.deleteDoctor);
 
 module.exports = router;
