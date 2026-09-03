@@ -37,11 +37,6 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "clinic_id",
         as: "appointments"
       });
-      Clinics.hasMany(models.ChatParticipants, {
-        foreignKey: 'user_id',
-        constraints: false,
-        as: 'chatParticipants',
-      });
     }
   }
   Clinics.init({
