@@ -23,9 +23,10 @@ const UserController = {
     updateUser: async (req, res, next) => {
         const { userData, addressData } = req.body;
         const userId = req.user.id;
+        const role = req.user.role;
 
         try {
-            await UserService.updateUser(userId, userData, addressData);
+            await UserService.updateUser(userId, userData, addressData, role);
             res.status(200).json({ message: "User update successfully" });
         } catch (err) {
             next(err);

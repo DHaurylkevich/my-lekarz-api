@@ -42,7 +42,7 @@ const UserService = {
             });
 
             if (!doctor) {
-                return new AppError("Doctor not found", 404);
+                throw new AppError("Doctor not found", 404);
             }
 
             return { ...user.dataValues, ...doctor.dataValues };
@@ -65,20 +65,28 @@ const UserService = {
 
         return user;
     },
-    updateUser: async (userId, userData, addressData) => {
-        if ("password" in userData) {
+    updateUser: async (userId, userData, addressData, role) => {
+        if (userData && "password" in userData) {
             delete userData.password;
         }
 
         const t = await sequelize.transaction();
         try {
-            const user = await db.Users.findByPk(userId);
-            await user.update(userData, { transaction: t });
+            const user = role === "clinic"
+                ? await db.Clinics.findByPk(userId)
+                : await db.Users.findByPk(userId);
 
+            if (!user) {
+                throw new AppError("User not found", 404);
+            }
+
+            await user.update(userData || {}, { transaction: t });
+
+            const addressFk = role === "clinic" ? "clinic_id" : "user_id";
             const address = await user.getAddress();
             if (address) {
-                await address.update({ ...addressData, user_id: user.id }, { transaction: t });
-            } else {
+                await address.update({ ...(addressData || {}), [addressFk]: user.id }, { transaction: t });
+            } else if (addressData) {
                 await user.createAddress(addressData, { transaction: t });
             }
 

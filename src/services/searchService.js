@@ -1,10 +1,14 @@
 const { Op } = require("sequelize");
 const db = require("../models");
 const sequelize = require("../config/db");
+const AppError = require("../utils/appError");
 const { getPaginationParams } = require("../utils/pagination");
 
 function getQueryWords(query) {
-    const words = query.split(" ");
+    const words = (query || "").split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+        throw new AppError("Search query is required", 400);
+    }
     return words.map(word => "%" + word + "%");
 }
 

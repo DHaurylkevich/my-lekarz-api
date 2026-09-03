@@ -182,7 +182,18 @@ const ScheduleService = {
                 ? { date: date }
                 : {
                     date: { [Op.gte]: new Date() },
-                    available_slots: { [Op.not]: [] }
+                    // available_slots is a VIRTUAL attribute (computed from the
+                    // appointments loaded via the Schedules.appointments include),
+                    // so it cannot be used in a SQL WHERE clause. Instead, only
+                    // keep schedules that still have at least one free slot.
+                    [Op.and]: db.sequelize.literal(`(
+                        SELECT COUNT(*)
+                        FROM "appointments"
+                        WHERE "appointments"."schedule_id" = "Schedules"."id"
+                          AND "appointments"."status" = 'active'
+                    ) < (
+                        EXTRACT(EPOCH FROM ("Schedules"."end_time" - "Schedules"."start_time")) / 60 / "Schedules"."interval"
+                    )`),
                 },
             required: true,
             order: [["date", "ASC"]]

@@ -8,9 +8,9 @@ const ClinicController = {
             await ClinicService.createClinic(clinicData, addressData);
 
             if (process.env.EMAIL === undefined || process.env.EMAIL_PASS === undefined) {
-                res.status(200).json({ message: "Write to Dima to include his email in the function" });
+                return res.status(201).json({ message: "Clinic created, but the password setup email was not sent (mail is not configured)" });
             }
-            res.status(201).json({ message: "The link for password configuration has been sent to mail" });
+            return res.status(201).json({ message: "The link for password configuration has been sent to mail" });
         } catch (err) {
             next(err);
         }

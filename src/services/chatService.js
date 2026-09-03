@@ -4,18 +4,23 @@ const AppError = require("../utils/appError");
 
 const chatService = {
     createChat: async (user, to) => {
+        const normalizeType = (role) => (role === "clinic" ? "clinic" : "user");
+
         let user2;
-        if (to.role == "clinic") {
+        if (to.role === "clinic") {
             user2 = await db.Clinics.findByPk(to.id);
         } else {
             user2 = await db.Users.findByPk(to.id);
-            if (!user2) {
-                throw new AppError("User not found", 404);
-            }
-            user2.role = "user";
         }
 
-        const participants = [{ id: user.id, type: user.role }, { id: user2.id, type: user2.role }];
+        if (!user2) {
+            throw new AppError("User not found", 404);
+        }
+
+        const participants = [
+            { id: user.id, type: normalizeType(user.role) },
+            { id: user2.id, type: normalizeType(to.role) }
+        ];
 
         const chat = await chatService.getOneChatByUsers(participants);
         if (chat) {
@@ -33,7 +38,7 @@ const chatService = {
             );
             return newChat.id;
         } catch (err) {
-            throw new AppError("Error" + err.messages, 500);
+            throw new AppError("Error creating chat: " + err.message, 500);
         }
     },
     getChats: async (user) => {
@@ -102,7 +107,64 @@ const chatService = {
 
             return chats;
         } catch (err) {
-            throw new AppError("Error" + err.messages, 500);
+            throw new AppError("Error loading chats: " + err.message, 500);
+        }
+    },
+    getChatById: async (chatId, user) => {
+        const userType = user.role !== "clinic" ? "user" : "clinic";
+
+        try {
+            const chat = await db.Chats.findOne({
+                attributes: ["id", "createdAt"],
+                where: {
+                    id: chatId,
+                    '$chatParticipants.user_id$': user.id,
+                    '$chatParticipants.user_type$': userType,
+                },
+                include: [
+                    {
+                        model: db.ChatParticipants,
+                        as: 'chatParticipants',
+                        attributes: ['user_id', 'user_type'],
+                        include: [
+                            {
+                                model: db.Users,
+                                as: 'user',
+                                attributes: ["id", "first_name", "last_name", "photo"],
+                                required: false,
+                                where: {
+                                    '$chatParticipants.user_type$': 'user'
+                                }
+                            },
+                            {
+                                model: db.Clinics,
+                                as: 'clinic',
+                                attributes: ["id", "name", "photo"],
+                                required: false,
+                                where: {
+                                    '$chatParticipants.user_type$': 'clinic'
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        model: db.Messages,
+                        as: 'messages',
+                        order: [['createdAt', 'ASC']]
+                    }
+                ],
+            });
+
+            if (!chat) {
+                throw new AppError("Chat not found", 404);
+            }
+
+            return chat;
+        } catch (err) {
+            if (err instanceof AppError) {
+                throw err;
+            }
+            throw new AppError("Error loading chat: " + err.message, 500);
         }
     },
     getOneChatByUsers: async (participants) => {
@@ -127,7 +189,7 @@ const chatService = {
             });
             return chat;
         } catch (err) {
-            throw new AppError("Error" + err.messages, 500);
+            throw new AppError("Error loading chat: " + err.message, 500);
         }
     },
     deleteChat: async (chatId, user) => {

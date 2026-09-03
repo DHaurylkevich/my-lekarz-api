@@ -36,7 +36,7 @@ const ClinicService = {
 
             clinic = await db.Clinics.create(clinicData, { transaction: t });
             await clinic.createAddress(addressData, { transaction: t });
-            await TimetableService.createTimetable(clinicData.id, t);
+            await TimetableService.createTimetable(clinic.id, t);
 
             const resetToken = createJWT(clinic.id, clinic.role);
             await clinic.update({ resetToken }, { transaction: t });
@@ -239,7 +239,11 @@ const ClinicService = {
         }
     },
     deleteClinicById: async (clinicId) => {
-        const clinic = db.Clinics.findOne({ where: { id: clinicId } });
+        const clinic = await db.Clinics.findOne({ where: { id: clinicId } });
+
+        if (!clinic) {
+            throw new AppError("Clinic not found", 404);
+        }
 
         if (clinic.photo !== null) {
             await cloudinary.deleteFromCloud(clinic.photo);
