@@ -13,9 +13,7 @@ const task = cron.schedule('*/10 * * * *', async () => {
             where: {
                 status: 'active',
                 [Op.or]: [
-                    // whole past days are completed regardless of the time slot
                     { '$schedule.date$': { [Op.lt]: today } },
-                    // today's appointments are completed once their time has passed
                     {
                         '$schedule.date$': today,
                         time_slot: { [Op.lte]: currentTime }

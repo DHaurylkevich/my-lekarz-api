@@ -1,4 +1,3 @@
-// filepath: /Users/mac/Documents/ProjectS/doc-web/src/models/prescriptionMedications.js
 'use strict';
 const { Model } = require('sequelize');
 

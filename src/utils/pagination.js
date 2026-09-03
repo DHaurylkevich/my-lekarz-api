@@ -9,8 +9,6 @@ function getPaginationParams(limit, page) {
 
 function getTotalPages(count, parsedLimit, page) {
     const totalPages = Math.ceil(count / parsedLimit);
-    // An empty result set (totalPages === 0) is not an error, but requesting a
-    // page beyond the last one is.
     if (totalPages > 0 && page > totalPages) {
         throw new AppError("Page not found", 404);
     }

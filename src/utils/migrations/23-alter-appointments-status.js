@@ -7,8 +7,6 @@ module.exports = {
         );
     },
     async down(queryInterface) {
-        // Removing an enum value is not supported by PostgreSQL, so this is only
-        // safe to run while no row uses the 'canceled' value.
         await queryInterface.sequelize.query(
             `DELETE FROM pg_enum
              WHERE enumlabel = 'canceled'

@@ -58,8 +58,6 @@ module.exports = (sequelize, DataTypes) => {
             afterFind: async (instances) => {
                 if (!instances) return;
 
-                // afterFind receives a single instance for findOne/findByPk and an
-                // array for findAll/findAndCountAll, so normalize before filtering.
                 const list = Array.isArray(instances) ? instances : [instances];
                 const now = new Date();
                 const expired = list.filter(p => p.expiration_date !== null && p.expiration_date < now);
@@ -72,8 +70,6 @@ module.exports = (sequelize, DataTypes) => {
                     { where: { id: ids } }
                 );
 
-                // Reflect the expiry on the already-loaded instances so the
-                // current response does not return stale active data.
                 expired.forEach(p => {
                     p.status = 'inactive';
                     p.code = null;
