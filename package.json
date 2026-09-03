@@ -17,7 +17,6 @@
     "nodemon": "^3.1.4",
     "rewire": "^7.0.0",
     "sinon": "^22.1.0",
-    "socket.io-client": "^4.8.1",
     "supertest": "^7.0.0"
   },
   "engines": {
@@ -66,7 +65,6 @@
     "sequelize": "^6.37.3",
     "sequelize-auto": "^0.8.8",
     "sequelize-cli": "^6.6.2",
-    "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "4.6.3",
     "winston": "^3.16.0"

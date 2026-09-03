@@ -40,9 +40,9 @@ const AuthService = {
 
             let user;
             if (role === "patient" || role === "doctor" || role === "admin") {
-                user = await db.Users.findOne({ where: { id: id }, attributes: ["id", "resetToken"] }, { transaction: t });
+                user = await db.Users.findOne({ where: { id: id }, attributes: ["id", "resetToken"], transaction: t });
             } else {
-                user = await db.Clinics.findOne({ where: { id: id }, attributes: ["id", "resetToken"] }, { transaction: t });
+                user = await db.Clinics.findOne({ where: { id: id }, attributes: ["id", "resetToken"], transaction: t });
             }
 
             if (!user || user.resetToken !== token) {

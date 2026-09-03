@@ -11,6 +11,7 @@ const validateRequest = (req, res, next) => {
         }));
 
         next(new AppError(errorDetails[0].message, 400));
+        return;
     }
     next();
 };
