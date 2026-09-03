@@ -2,11 +2,12 @@ require("dotenv").config();
 process.env.NODE_ENV = 'test';
 
 const sinon = require("sinon");
+const rewire = require('rewire');
 const { expect, use } = require("chai");
 const chaiAsPromised = require("chai-as-promised");
 const db = require("../../../src/models");
 const sequelize = require("../../../src/config/db");
-const ClinicService = require("../../../src/services/clinicService");
+const ClinicService = rewire("../../../src/services/clinicService");
 const AddressService = require("../../../src/services/addressService");
 const TimetableService = require("../../../src/services/timetableService");
 
@@ -31,7 +32,7 @@ describe("Clinic Service", () => {
                 createAddressStub = sinon.stub();
                 hashPasswordStub = sinon.stub().resolves("hashedPassword");
                 createJWTStub = sinon.stub().returns("token");
-                setPasswordMailStub = sinon.stub().resolves();
+                ClinicService.__set__('setPasswordMail', sinon.stub().resolves());
                 createTimetableStub = sinon.stub(TimetableService, "createTimetable").resolves();
                 createClinicStub.resolves({
                     id: 1,
@@ -131,17 +132,19 @@ describe("Clinic Service", () => {
             });
         });
         describe("deleteClinicById", () => {
-            let destroyStub;
+            let destroyStub, findOneClinicStub;
 
             beforeEach(async () => {
-                destroyClinicStub = sinon.stub(db.Clinics, "destroy");
+                findOneClinicStub = sinon.stub(db.Clinics, "findOne");
+                destroyStub = sinon.stub().resolves(true);
             });
             it("expect to destroy clinic, when it exists in the database", async () => {
-                destroyClinicStub.resolves(true);
+                findOneClinicStub.resolves({ id: 1, photo: null, destroy: destroyStub });
 
                 await ClinicService.deleteClinicById(1);
 
-                expect(destroyClinicStub.calledOnce).to.be.true;
+                expect(findOneClinicStub.calledOnce).to.be.true;
+                expect(destroyStub.calledOnce).to.be.true;
             })
         })
     });

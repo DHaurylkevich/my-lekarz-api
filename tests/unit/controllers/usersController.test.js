@@ -51,7 +51,7 @@ describe("Users Controller", () => {
                         userData: { name: "John Doe", email: "john@example.com" },
                         addressData: { city: "New York", street: "5th Avenue" },
                     },
-                    user: { id: 1 },
+                    user: { id: 1, role: "doctor" },
                 };
                 const res = {
                     status: sinon.stub().returnsThis(),
@@ -65,7 +65,8 @@ describe("Users Controller", () => {
                 expect(updateUserStub.calledOnceWith(
                     req.user.id,
                     req.body.userData,
-                    req.body.addressData
+                    req.body.addressData,
+                    req.user.role
                 )).to.be.true;
                 expect(res.status.calledOnceWith(200)).to.be.true;
                 expect(res.json.calledOnceWith({ message: "User update successfully" })).to.be.true;
@@ -140,7 +141,7 @@ describe("Users Controller", () => {
                         userData: { name: "John Doe", email: "john@example.com" },
                         addressData: { city: "New York", street: "5th Avenue" },
                     },
-                    user: { id: 1 },
+                    user: { id: 1, role: "doctor" },
                 };
                 const res = {
                     status: sinon.stub().returnsThis(),
@@ -155,7 +156,8 @@ describe("Users Controller", () => {
                 expect(userUpdateStub.calledOnceWithExactly(
                     req.user.id,
                     req.body.userData,
-                    req.body.addressData
+                    req.body.addressData,
+                    req.user.role
                 )).to.be.true;
                 expect(next.calledOnceWith(testError)).to.be.true;
             });

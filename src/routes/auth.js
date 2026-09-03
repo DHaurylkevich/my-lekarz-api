@@ -10,9 +10,6 @@ const AuthController = require("../controllers/authController");
  *   post:
  *     summary: User authentication
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
  *       content:
@@ -62,9 +59,6 @@ router.post("/login", (req, res, next) => {
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
  *       content:
@@ -86,9 +80,6 @@ router.post("/register", AuthController.register);
  *   get:
  *     summary: User logout
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     responses:
  *       '200':
  *         description: Login successful
@@ -108,9 +99,6 @@ router.get("/logout", AuthController.logout);
  *   get:
  *     summary: Start Google authentication
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  */
 router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 /**
@@ -119,9 +107,6 @@ router.get("/auth/google", passport.authenticate("google", { scope: ["profile", 
  *   get:
  *     summary: Google authentication callback URL
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  */
 router.get("/auth/google/callback",
     passport.authenticate("google", { failWithError: true, failureMessage: true, failureRedirect: 'https://mojlekarz.netlify.app/login' }), AuthController.googleCallback);
@@ -155,9 +140,6 @@ router.post("/forgot-password", AuthController.requestPasswordReset);
  *   post:
  *     summary: Sets a new password for the user or clinic
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
  *       content:

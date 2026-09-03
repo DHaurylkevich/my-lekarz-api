@@ -2,6 +2,12 @@ const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 
+// The API's dev origin is dynamic: index.js listens on PORT (default 5000)
+// and builds links from LINK (default http://localhost). Mirror that logic
+// here so "Try it out" always targets the running server.
+const devBase = `${process.env.LINK || "http://localhost"}:${process.env.PORT || 5000}`;
+const prodBase = "https://doc-web-rose.vercel.app";
+
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
@@ -12,11 +18,13 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: "http://localhost:5000/api",
+                // Most routers are mounted under /api, so annotated paths like
+                // /appointments resolve to {server}/appointments.
+                url: `${devBase}/api`,
                 description: "Development server"
             },
             {
-                url: "https://doc-web-rose.vercel.app/api",
+                url: `${prodBase}/api`,
                 description: "Production server"
             }
         ],
@@ -41,6 +49,32 @@ const swaggerOptions = {
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
+
+// The auth router is mounted at the root (not under /api), so its operations
+// must point at the origin without the /api suffix.
+const AUTH_ROOT_PATHS = [
+    '/login',
+    '/register',
+    '/logout',
+    '/auth/google',
+    '/auth/google/callback',
+    '/forgot-password',
+    '/set-password',
+];
+
+for (const p of AUTH_ROOT_PATHS) {
+    const pathItem = swaggerDocs.paths && swaggerDocs.paths[p];
+    if (!pathItem) continue;
+
+    for (const op of Object.values(pathItem)) {
+        if (op && typeof op === 'object') {
+            op.servers = [
+                { url: devBase, description: "Development server" },
+                { url: prodBase, description: "Production server" }
+            ];
+        }
+    }
+}
 
 const swaggerSetupOptions = {
     customCssUrl: 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css',

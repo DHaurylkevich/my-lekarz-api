@@ -13,14 +13,14 @@ const task = cron.schedule('*/10 * * * *', async () => {
             where: {
                 status: 'active',
                 [Op.or]: [
-                    { '$schedule.date$': { [Op.lt]: today } },
+                    { '$Schedule.date$': { [Op.lt]: today } },
                     {
-                        '$schedule.date$': today,
+                        '$Schedule.date$': today,
                         time_slot: { [Op.lte]: currentTime }
                     }
                 ]
             },
-            include: [{ model: db.Schedules, as: 'schedule' }]
+            include: [{ model: db.Schedules }]
         });
 
         for (const appointment of appointments) {
