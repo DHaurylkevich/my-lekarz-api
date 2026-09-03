@@ -22,7 +22,8 @@
     "node": "22.x"
   },
   "scripts": {
-    "test": "NODE_ENV=test mocha tests/integration/**.test.js",
+    "test": "NODE_ENV=test mocha --exit 'tests/integration/**/*.test.js'",
+    "test:unit": "NODE_ENV=test mocha --exit 'tests/unit/**/*.test.js'",
     "dev": "nodemon index.js",
     "build": "node index.js",
     "lint": "eslint ."

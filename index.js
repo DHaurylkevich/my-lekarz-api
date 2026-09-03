@@ -17,6 +17,7 @@ startCron();
 app.use(cors({
   origin: [
     'http://localhost:3000',
+    'http://localhost:5000',
     "https://doc-web-rose.vercel.app",
     "https://accounts.google.com/o/oauth2/v2/auth"
   ],

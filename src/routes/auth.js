@@ -10,9 +10,6 @@ const AuthController = require("../controllers/authController");
  *   post:
  *     summary: User authentication
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
  *       content:
@@ -62,9 +59,6 @@ router.post("/login", (req, res, next) => {
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
  *       content:
@@ -78,6 +72,32 @@ router.post("/login", (req, res, next) => {
  *               password:
  *                 type: string
  *                 example: "123456789"
+ *     responses:
+ *       '201':
+ *         description: Registration successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     email:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                 message:
+ *                   type: string
+ *                   example: "Registration successful"
+ *       '400':
+ *         description: Invalid email or password
+ *       '404':
+ *         description: User already exists
+ *       '500':
+ *         description: Account created, but automatic login failed
  */
 router.post("/register", AuthController.register);
 /**
@@ -86,9 +106,6 @@ router.post("/register", AuthController.register);
  *   get:
  *     summary: User logout
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     responses:
  *       '200':
  *         description: Login successful
@@ -108,9 +125,9 @@ router.get("/logout", AuthController.logout);
  *   get:
  *     summary: Start Google authentication
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
+ *     responses:
+ *       '302':
+ *         description: Redirect to Google's OAuth consent screen
  */
 router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 /**
@@ -119,9 +136,9 @@ router.get("/auth/google", passport.authenticate("google", { scope: ["profile", 
  *   get:
  *     summary: Google authentication callback URL
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
+ *     responses:
+ *       '302':
+ *         description: Redirect to the app (or to the login page on failure)
  */
 router.get("/auth/google/callback",
     passport.authenticate("google", { failWithError: true, failureMessage: true, failureRedirect: 'https://mojlekarz.netlify.app/login' }), AuthController.googleCallback);
@@ -132,9 +149,6 @@ router.get("/auth/google/callback",
  *       summary: Sends a password reset link
  *       description: Sends a password reset token to the email of an existing user or clinic. The link may be malformed because the correct password reset page address is needed.
  *       tags: [Auth]
- *       servers:
- *         - url: http://localhost:3000
- *         - url: https://doc-web-rose.vercel.app
  *       requestBody:
  *         description: User's email
  *         required: true
@@ -147,6 +161,18 @@ router.get("/auth/google/callback",
  *                   type: string
  *                   example: email@gmail.com
  *                   description: Email
+ *       responses:
+ *         '200':
+ *           description: Password reset link sent (or service mail error)
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *         '404':
+ *           description: No user or clinic with this email
  */
 router.post("/forgot-password", AuthController.requestPasswordReset);
 /**
@@ -155,9 +181,6 @@ router.post("/forgot-password", AuthController.requestPasswordReset);
  *   post:
  *     summary: Sets a new password for the user or clinic
  *     tags: [Auth]
- *     servers:
- *       - url: http://localhost:5000
- *       - url: https://doc-web-rose.vercel.app
  *     requestBody:
  *       required: true
  *       content:
@@ -169,6 +192,21 @@ router.post("/forgot-password", AuthController.requestPasswordReset);
  *                 type: string
  *               newPassword:
  *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Password has been reset
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Password has been reset"
+ *       '400':
+ *         description: Missing token or newPassword
+ *       '404':
+ *         description: Invalid or expired token
  */
 router.post("/set-password", AuthController.setPassword);
 

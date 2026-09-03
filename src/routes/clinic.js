@@ -96,29 +96,32 @@ router.post("/clinics", isAuthenticated, hasRole("admin"), ClinicController.crea
  *     parameters:
  *       - name: name
  *         in: query
- *         description: Clinic's name
+ *         description: Clinic's name (partial match)
  *         required: false
  *         schema:
  *           type: string
- *           example: "Durka"
+ *           example: "Chmielewski"
  *       - name: province
  *         in: query
  *         required: false
+ *         description: Province of the clinic's address (partial match)
  *         schema:
  *           type: string
- *           example: "Grodhno"
+ *           example: "podkarpackie"
  *       - name: specialty
  *         in: query
  *         required: false
+ *         description: Only clinics offering a service of this specialty (partial match)
  *         schema:
  *           type: string
- *           example: "Peper dr"
+ *           example: "Kardiolog"
  *       - name: city
  *         in: query
  *         required: false
+ *         description: City of the clinic's address (partial match)
  *         schema:
  *           type: string
- *           example: "Novogrudok"
+ *           example: "Pełczyce"
  *       - name: limit
  *         in: query
  *         required: false
@@ -203,7 +206,7 @@ router.post("/clinics", isAuthenticated, hasRole("admin"), ClinicController.crea
  *                           properties:
  *                             name:
  *                               type: string
- *                               example: "Blood test'"
+ *                               example: "Blood test"
  *                             price:
  *                               type: string
  *                               format: decimal
@@ -213,7 +216,7 @@ router.post("/clinics", isAuthenticated, hasRole("admin"), ClinicController.crea
  *                               properties:
  *                                 name:
  *                                   type: string
- *                                   example: "Associate"
+ *                                   example: "Kardiolog"
 
  */
 router.get("/clinics", ClinicController.getAllClinicByParams);
@@ -403,11 +406,11 @@ router.get("/admins/clinics", isAuthenticated, hasRole("admin"), ClinicControlle
  *                 type: object
  *                 properties:
  *                   city:
- *                       type: string
- *                       exemple: "Warszawa"
+ *                     type: string
+ *                     example: "Pełczyce"
  *                   province:
- *                       type: string
- *                       exemple: "Mazowieckie"
+ *                     type: string
+ *                     example: "podkarpackie"
  */
 router.get("/clinics/cities", ClinicController.getAllCities);
 /**
@@ -415,7 +418,7 @@ router.get("/clinics/cities", ClinicController.getAllCities);
  * /clinics/{clinicId}:
  *   get:
  *     summary: Get full information for clinic
- *     description: Returns details of the clinic, including address and related services
+ *     description: Returns details of a single clinic, including its address and weekly timetable
  *     tags: [Clinics]
  *     parameters:
  *       - name: clinicId
@@ -424,86 +427,81 @@ router.get("/clinics/cities", ClinicController.getAllCities);
  *         description: clinic's ID
  *         schema:
  *           type: integer
- *           example: 1
+ *           example: 142
  *     responses:
- *       200:
+ *       '200':
+ *         description: Clinic details
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 pages:
+ *                 id:
  *                   type: integer
- *                   example: 5
- *                 clinics:
+ *                   example: 142
+ *                 photo:
+ *                   type: string
+ *                   format: uri
+ *                   example: "https://loremflickr.com/3494/3839?lock=6098064564895426"
+ *                 name:
+ *                   type: string
+ *                   example: "Chmielewski z o.o"
+ *                 nip:
+ *                   type: string
+ *                   example: "2319406865"
+ *                 nr_license:
+ *                   type: string
+ *                   example: "A9A8YXMCH1NV48977"
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                   example: "clinic@gmail.com"
+ *                 phone:
+ *                   type: string
+ *                   example: "+48848246920"
+ *                 description:
+ *                   type: string
+ *                   example: "Sint pariatur nobis doloremque aut nulla."
+ *                 rating:
+ *                   type: string
+ *                   example: "1.7"
+ *                 address:
+ *                   type: object
+ *                   properties:
+ *                     city:
+ *                       type: string
+ *                       example: "Pełczyce"
+ *                     province:
+ *                       type: string
+ *                       example: "podkarpackie"
+ *                     street:
+ *                       type: string
+ *                       example: "wyb. Cybulski"
+ *                     home:
+ *                       type: string
+ *                       example: "72a"
+ *                     flat:
+ *                       type: string
+ *                       example: "87c"
+ *                     post_index:
+ *                       type: string
+ *                       example: "83975"
+ *                 timetables:
  *                   type: array
  *                   items:
  *                     type: object
  *                     properties:
- *                       id:
- *                         type: integer
- *                         example: 142
- *                       photo:
- *                         type: string
- *                         format: uri
- *                         example: "https://loremflickr.com/3494/3839?lock=6098064564895426"
- *                       name:
- *                         type: string
- *                         example: "Chmielewski z o.o"
- *                       nip:
- *                         type: string
- *                         example: "2319406865"
- *                       nr_license:
- *                         type: string
- *                         example: "A9A8YXMCH1NV48977"
- *                       email:
- *                         type: string
- *                         format: email
- *                         example: "clinic@gmail.com"
- *                       phone:
- *                         type: string
- *                         example: "+48848246920"
- *                       createdAt:
- *                         type: string
- *                         example: "2025-01-28T15:23:08.765Z"
- *                       doctorCount:
+ *                       day_of_week:
  *                         type: number
- *                         example: 0
- *                       address:
- *                         type: object
- *                         properties:
- *                           city:
- *                             type: string
- *                             example: "Pełczyce"
- *                           province:
- *                             type: string
- *                             example: "podkarpackie"
- *                           street:
- *                             type: string
- *                             example: "wyb. Cybulski"
- *                           home:
- *                             type: string
- *                             example: "72a"
- *                           flat:
- *                             type: string
- *                             example: "87c"
- *                           post_index:
- *                             type: string
- *                             example: "83975"
- *                       timetables:
- *                         type: array
- *                         items:
- *                           type: object
- *                           properties:
- *                             day_of_week:
- *                               type: number
- *                               example: 7
- *                             start_time:
- *                               type: string
- *                               example: "08:00"
- *                             end_time:
- *                               type: string
- *                               example: "18:00"
+ *                         example: 7
+ *                       start_time:
+ *                         type: string
+ *                         example: "08:00"
+ *                       end_time:
+ *                         type: string
+ *                         example: "18:00"
+ *       '404':
+ *         description: Clinic not found
  */
 router.get("/clinics/:clinicId", ClinicController.getFullClinic);
 

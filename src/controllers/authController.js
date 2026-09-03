@@ -29,13 +29,13 @@ const AuthController = {
 
             req.login(user, (err) => {
                 if (err) {
-                    return next(new AppError("Error during login", 500));
+                    return next(new AppError("Account created, but automatic login failed. Please sign in manually.", 500));
                 }
 
                 const userData = user.toJSON();
                 delete userData.password;
                 delete userData.resetToken;
-                res.json({ user: userData, message: "Registration successful" });
+                res.status(201).json({ user: userData, message: "Registration successful" });
             });
         } catch (err) {
             next(err);

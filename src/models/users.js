@@ -27,11 +27,6 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
         as: "address"
       });
-      Users.hasMany(models.ChatParticipants, {
-        foreignKey: 'user_id',
-        constraints: false,
-        as: 'chatParticipants',
-      });
     }
   }
   Users.init({

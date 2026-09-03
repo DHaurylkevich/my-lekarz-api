@@ -26,25 +26,17 @@ const errorHandler = (err, req, res, next) => {
     const isDev = NODE_ENV === "test" || NODE_ENV === "development";
 
     if (err.isOperational || isDev) {
-        logger.warn(`${err.statusCode} - ${err.message}`);
-
         if (isDev) {
-            console.log({
-                message: err.message,
-                error: err
-            });
+            // Full trace server-side only - never send the stack to the client
+            logger.error(err.stack || err.message);
+        } else {
+            logger.warn(`${err.statusCode} - ${err.message}`);
         }
 
-        const body = {
+        res.status(err.statusCode).json({
             status: err.status,
             message: err.message
-        };
-
-        if (isDev) {
-            body.stack = err.stack;
-        }
-
-        res.status(err.statusCode).json(body);
+        });
     } else {
         logger.error(`${err.statusCode} - ${err.message}`);
         res.status(err.statusCode).json({

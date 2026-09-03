@@ -110,7 +110,29 @@ const ClinicService = {
     },
     getAllClinicsFullData: async ({ name, province, specialty, city, limit, page }) => {
         const queryClinic = name ? { name: { [Op.iLike]: `%${name}%` } } : {};
-        const querySpecialty = specialty ? { name: { [Op.iLike]: `%${specialty}%` } } : {};
+
+        const hasAddressFilter = Boolean(city || province);
+
+        let specialtyClinicIds = null;
+        if (specialty) {
+            const matchingServices = await db.Services.findAll({
+                attributes: ["clinic_id"],
+                include: [
+                    {
+                        model: db.Specialties,
+                        as: "specialty",
+                        required: true,
+                        attributes: [],
+                        where: { name: { [Op.iLike]: `%${specialty}%` } },
+                    }
+                ],
+            });
+
+            specialtyClinicIds = [...new Set(matchingServices.map((service) => service.clinic_id))];
+            if (specialtyClinicIds.length === 0) {
+                return { pages: 0, clinics: [] };
+            }
+        }
 
         const queryAddress = {};
         if (city) queryAddress.city = { [Op.iLike]: `%${city}%` };
@@ -119,9 +141,13 @@ const ClinicService = {
         const { parsedLimit, offset } = getPaginationParams(limit, page);
 
         const { rows, count } = await db.Clinics.findAndCountAll({
+            distinct: true,
             limit: parsedLimit,
             offset: offset,
-            where: queryClinic,
+            where: {
+                ...queryClinic,
+                ...(specialtyClinicIds ? { id: { [Op.in]: specialtyClinicIds } } : {}),
+            },
             attributes: {
                 exclude: ["password", "resetToken", "createdAt", "updatedAt", "role", "feedbackRating"],
                 include: [
@@ -140,7 +166,8 @@ const ClinicService = {
                     model: db.Addresses,
                     as: "address",
                     attributes: { exclude: ["id", "user_id", "clinic_id", "createdAt", "updatedAt"] },
-                    where: queryAddress,
+                    required: hasAddressFilter,
+                    where: hasAddressFilter ? queryAddress : undefined,
                 },
                 {
                     model: db.Services,
@@ -151,18 +178,17 @@ const ClinicService = {
                             model: db.Specialties,
                             as: "specialty",
                             attributes: { exclude: ["id", "createdAt", "updatedAt"] },
-                            where: querySpecialty,
                         }
                     ]
                 },
             ],
         });
 
+        const totalPages = getTotalPages(count, parsedLimit, page);
+
         if (!rows.length) {
             return { pages: 0, clinics: [] };
         }
-
-        const totalPages = getTotalPages(count, parsedLimit, page);
 
         return {
             pages: totalPages,
@@ -173,6 +199,9 @@ const ClinicService = {
         const { parsedLimit, offset } = getPaginationParams(limit, page);
 
         const { rows, count } = await db.Clinics.findAndCountAll({
+            // Timetables are hasMany (one row per workday): without DISTINCT the
+            // count would multiply each clinic by its number of timetable rows.
+            distinct: true,
             limit: parsedLimit,
             offset: offset,
             order: [["name", sort === "asc" ? "ASC" : "DESC"]],
