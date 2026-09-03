@@ -2,12 +2,6 @@ const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 
-// The API's dev origin is dynamic: index.js listens on PORT (default 5000)
-// and builds links from LINK (default http://localhost). Mirror that logic
-// here so "Try it out" always targets the running server.
-const devBase = `${process.env.LINK || "http://localhost"}:${process.env.PORT || 5000}`;
-const prodBase = "https://doc-web-rose.vercel.app";
-
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
@@ -18,23 +12,12 @@ const swaggerOptions = {
         },
         servers: [
             {
-                // Most routers are mounted under /api, so annotated paths like
-                // /appointments resolve to {server}/appointments.
-                url: `${devBase}/api`,
-                description: "Development server"
-            },
-            {
-                url: `${prodBase}/api`,
-                description: "Production server"
+                url: '/api',
+                description: 'API server (same origin)'
             }
         ],
         components: {
             securitySchemes: {
-                // The API authenticates with express-session/passport. The
-                // session cookie is named "connect.sid". Once you log in via
-                // POST /login (or the Google callback) in the same browser
-                // origin, the cookie is sent automatically - Swagger UI only
-                // needs to be opened on the API host itself.
                 CookieAuth: {
                     type: "apiKey",
                     in: "cookie",
@@ -50,8 +33,6 @@ const swaggerOptions = {
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 
-// The auth router is mounted at the root (not under /api), so its operations
-// must point at the origin without the /api suffix.
 const AUTH_ROOT_PATHS = [
     '/login',
     '/register',
@@ -68,10 +49,7 @@ for (const p of AUTH_ROOT_PATHS) {
 
     for (const op of Object.values(pathItem)) {
         if (op && typeof op === 'object') {
-            op.servers = [
-                { url: devBase, description: "Development server" },
-                { url: prodBase, description: "Production server" }
-            ];
+            op.servers = [{ url: '/', description: 'Auth endpoints (root, same origin)' }];
         }
     }
 }
