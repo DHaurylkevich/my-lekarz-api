@@ -7,4 +7,5 @@ package-lock.json
 .vercel
 .mocharc.json
 .vscode
+load-test.js
 coverage
