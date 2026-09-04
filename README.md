@@ -142,7 +142,3 @@ tests/
 ├── integration/     # Supertest against the booted app
 └── unit/            # Sinon/Rewire tests (no DB needed)
 ```
-
-## 📄 License
-
-ISC — see the [repository](https://github.com/DHaurylkevich/doc-web).
